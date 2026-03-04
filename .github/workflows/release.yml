@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build universal binary
+        run: |
+          swift build -c release --arch arm64
+          swift build -c release --arch x86_64
+          lipo -create \
+            .build/arm64-apple-macosx/release/CaptainsLog \
+            .build/x86_64-apple-macosx/release/CaptainsLog \
+            -output CaptainsLog
+          chmod +x CaptainsLog
+
+      - name: Create tarball
+        run: |
+          tar czf captains-log-macos.tar.gz CaptainsLog LICENSE README.md
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          SHA=$(shasum -a 256 captains-log-macos.tar.gz | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: captains-log-macos.tar.gz
+          generate_release_notes: true
+
+      - name: Update Homebrew formula
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          echo "::notice::Homebrew SHA256: $SHA256"
+          echo "::notice::Update homebrew-captains-log formula with tag=$TAG sha256=$SHA256"
