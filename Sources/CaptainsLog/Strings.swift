@@ -52,11 +52,11 @@ enum L10n {
     )}
 
     // MARK: Ranks
-    static var rankCaptain: String { s("Captain", "선장", "船長", "船长", "Capitán", "Capitaine", "Kapitän") }
-    static var rankFirstMate: String { s("First Mate", "부선장", "副船長", "大副", "Primer Oficial", "Second", "Erster Maat") }
-    static var rankDeckhand: String { s("Deckhand", "갑판원", "甲板員", "水手", "Marinero", "Matelot", "Matrose") }
+    static var rankCaptain: String { s("Captain", "캡틴", "船長", "船长", "Capitán", "Capitaine", "Kapitän") }
+    static var rankFirstMate: String { s("First Mate", "항해사", "副船長", "大副", "Primer Oficial", "Second", "Erster Maat") }
+    static var rankDeckhand: String { s("Deckhand", "선원", "甲板員", "水手", "Marinero", "Matelot", "Matrose") }
     static var rankCastaway: String { s("Castaway", "조난자", "漂流者", "落水者", "Náufrago", "Naufragé", "Schiffbrüchiger") }
-    static var rankDavyJones: String { s("Davy Jones", "망자", "亡者", "亡灵", "Alma en Pena", "Âme Perdue", "Verlorene Seele") }
+    static var rankDavyJones: String { s("Davy Jones", "데비 존스", "亡者", "亡灵", "Alma en Pena", "Âme Perdue", "Verlorene Seele") }
 
     static func rankTitle(_ rank: PirateRank) -> String {
         switch rank {
@@ -74,7 +74,7 @@ enum L10n {
         case .captain:
             return s(
                 "Ye be a true Captain! The sea bows to ye!",
-                "이 바다의 주인은 나다!",
+                "캡틴이라고 불러. '캡틴'.",
                 "この海の王は俺だ！",
                 "这片海的主人是我！",
                 "¡El mar es tuyo, Capitán!",
@@ -84,7 +84,7 @@ enum L10n {
         case .firstMate:
             return s(
                 "The sea be callin', mate... better start shippin'!",
-                "파도가 거세진다... 커밋 안 하면 끝장이야!",
+                "수평선이 흐려지고 있어... 이해했는가?",
                 "波が荒れてきた… コミットしないとヤバいぞ！",
                 "风浪来了… 不提交就完了！",
                 "Se viene la tormenta... ¡commitea ya!",
@@ -94,7 +94,7 @@ enum L10n {
         case .deckhand:
             return s(
                 "Ship's takin' water! Commit or walk the plank!",
-                "배가 가라앉고 있어! 당장 커밋해!",
+                "블랙펄이 가라앉고 있어! 럼주 말고 커밋!",
                 "船が沈む！今すぐコミットしろ！",
                 "船在下沉！快提交！",
                 "¡El barco se hunde! ¡Commitea ahora!",
@@ -104,7 +104,7 @@ enum L10n {
         case .castaway:
             return s(
                 "Abandon ship! Ye be drownin'!",
-                "물에 빠졌다! 커밋만이 살 길이다!",
+                "크라켄이 온다! 커밋만이 살 길이야!",
                 "海に落ちた！コミットだけが命綱だ！",
                 "落水了！只有提交能救你！",
                 "¡Estás ahogándote! ¡Solo un commit te salva!",
@@ -114,7 +114,7 @@ enum L10n {
         case .davyJones:
             return s(
                 "To Davy Jones' Locker with ye! COMMIT NOW!",
-                "심해로 끌려간다! 지금 당장 커밋!",
+                "플라잉 더치맨에 오신 것을 환영한다. 커밋해.",
                 "深海に引きずり込まれる！今すぐコミット！",
                 "被拖入深渊！立刻提交！",
                 "¡Te arrastra el abismo! ¡COMMITEA YA!",
@@ -145,12 +145,12 @@ enum L10n {
 
     static func shipDesc(_ type: ShipType) -> String {
         switch type {
-        case .flagship:  return s("Leading the fleet!", "함대 선두!", "艦隊の先頭！", "舰队先锋！", "¡Lidera la flota!", "En tête de flotte !", "Führt die Flotte!")
-        case .warship:   return s("Battle-ready", "전투 태세", "臨戦態勢", "战斗准备", "Listo", "Prêt", "Bereit")
-        case .galleon:   return s("Sailing steady", "순항 중", "順調", "稳定航行", "Navegando", "En route", "Unterwegs")
-        case .sloop:     return s("Drifting...", "표류 중...", "漂流中…", "漂流中…", "A la deriva...", "À la dérive…", "Treibend…")
-        case .dinghy:    return s("Barely afloat", "겨우 떠 있음", "沈みかけ", "快沉了", "Casi hundido", "Presque coulé", "Kaum über Wasser")
-        case .shipwreck: return s("Sunk to the depths", "침몰", "沈没", "已沉", "Hundido", "Coulé", "Gesunken")
+        case .flagship:  return s("Leading the fleet!", "블랙펄급! 함대를 이끈다!", "艦隊の先頭！", "舰队先锋！", "¡Lidera la flota!", "En tête de flotte !", "Führt die Flotte!")
+        case .warship:   return s("Battle-ready", "플라잉 더치맨처럼 강하다", "臨戦態勢", "战斗准备", "Listo", "Prêt", "Bereit")
+        case .galleon:   return s("Sailing steady", "순풍에 돛 올려", "順調", "稳定航行", "Navegando", "En route", "Unterwegs")
+        case .sloop:     return s("Drifting...", "바람이 멎었다...", "漂流中…", "漂流中…", "A la deriva...", "À la dérive…", "Treibend…")
+        case .dinghy:    return s("Barely afloat", "크라켄 밥이 될 판", "沈みかけ", "快沉了", "Casi hundido", "Presque coulé", "Kaum über Wasser")
+        case .shipwreck: return s("Sunk to the depths", "데비 존스에게 바쳤다", "沈没", "已沉", "Hundido", "Coulé", "Gesunken")
         }
     }
 
@@ -206,14 +206,14 @@ enum L10n {
         case .firstMate:
             return (
                 s("⚓ Demoted to First Mate!",
-                  "⚓ 부선장으로 강등!",
+                  "⚓ 항해사로 강등!",
                   "⚓ 副船長に降格！",
                   "⚓ 降为大副！",
                   "⚓ ¡Degradado a Primer Oficial!",
                   "⚓ Rétrogradé au Second !",
                   "⚓ Zum Ersten Maat degradiert!"),
                 s("Your ship is slowing down... get back to coding!",
-                  "배가 느려지고 있어... 코딩으로 돌아가!",
+                  "블랙펄이 속도를 잃고 있어... 이해했는가?",
                   "船が減速している… コードに戻れ！",
                   "船在减速… 回去写代码！",
                   "Tu barco frena... ¡vuelve a programar!",
@@ -223,14 +223,14 @@ enum L10n {
         case .deckhand:
             return (
                 s("🪝 Demoted to Deckhand!",
-                  "🪝 갑판원으로 강등!",
+                  "🪝 선원으로 강등!",
                   "🪝 甲板員に降格！",
                   "🪝 降为水手！",
                   "🪝 ¡Degradado a Marinero!",
                   "🪝 Rétrogradé au Matelot !",
                   "🪝 Zum Matrosen degradiert!"),
                 s("Your ship is sinking! Commit now!",
-                  "배가 가라앉고 있어! 당장 커밋해!",
+                  "블랙펄에 물이 차오른다! 럼주 말고 커밋!",
                   "船が沈んでいる！今すぐコミットしろ！",
                   "船在下沉！赶快提交！",
                   "¡Tu barco se hunde! ¡Commitea ya!",
@@ -240,14 +240,14 @@ enum L10n {
         case .castaway:
             return (
                 s("🏊 You're a Castaway now!",
-                  "🏊 조난 상태!",
+                  "🏊 크라켄에게 당했다!",
                   "🏊 漂流中！",
                   "🏊 你落水了！",
                   "🏊 ¡Estás naufragando!",
                   "🏊 Tu es naufragé !",
                   "🏊 Du bist schiffbrüchig!"),
                 s("You're drowning! Only a commit can save you!",
-                  "물에 빠지고 있어! 커밋만이 살 길이야!",
+                  "크라켄이 끌어당기고 있어! 커밋만이 살 길이야!",
                   "溺れている！コミットだけが救いだ！",
                   "你在溺水！只有提交能救你！",
                   "¡Te ahogas! ¡Solo un commit te salva!",
@@ -257,14 +257,14 @@ enum L10n {
         case .davyJones:
             return (
                 s("☠️ YOU ARE DEAD!",
-                  "☠️ 사망!",
+                  "☠️ 플라잉 더치맨 탑승!",
                   "☠️ 死亡！",
                   "☠️ 你死了！",
                   "☠️ ¡ESTÁS MUERTO!",
                   "☠️ TU ES MORT !",
                   "☠️ DU BIST TOT!"),
                 s("Game over. Commit to come back to life!",
-                  "게임 오버. 커밋하면 부활!",
+                  "데비 존스와 100년 계약 체결. 커밋하면 파기.",
                   "ゲームオーバー。コミットで復活！",
                   "游戏结束。提交即可复活！",
                   "Fin del juego. ¡Commitea para revivir!",
@@ -279,14 +279,14 @@ enum L10n {
         if oldRank == .davyJones {
             return (
                 s("🏴‍☠️ RESURRECTION!",
-                  "🏴‍☠️ 부활!",
+                  "🏴‍☠️ 플라잉 더치맨 탈출!",
                   "🏴‍☠️ 復活！",
                   "🏴‍☠️ 复活！",
                   "🏴‍☠️ ¡RESURRECCIÓN!",
                   "🏴‍☠️ RÉSURRECTION !",
                   "🏴‍☠️ AUFERSTEHUNG!"),
                 s("You cheated death! Keep shipping!",
-                  "죽음에서 돌아왔다! 계속 커밋해!",
+                  "데비 존스와의 계약을 파기했다! 항해를 계속하라!",
                   "死から蘇った！コミットを続けろ！",
                   "你复活了！继续提交！",
                   "¡Volviste de la muerte! ¡Sigue commiteando!",
@@ -298,14 +298,14 @@ enum L10n {
         case .captain:
             return (
                 s("🏴‍☠️ Promoted to Captain!",
-                  "🏴‍☠️ 선장 승진!",
+                  "🏴‍☠️ 캡틴 승진!",
                   "🏴‍☠️ 船長に昇進！",
                   "🏴‍☠️ 晋升为船长！",
                   "🏴‍☠️ ¡Ascendido a Capitán!",
                   "🏴‍☠️ Promu Capitaine !",
                   "🏴‍☠️ Zum Kapitän befördert!"),
                 s("You own the seas! Keep this pace!",
-                  "이 바다의 주인이다! 이 속도 유지해!",
+                  "블랙펄의 캡틴이다! 캡틴 잭 스패로우!",
                   "海の王だ！このペースを維持しろ！",
                   "你是海上之王！保持这个速度！",
                   "¡El mar es tuyo! ¡Mantén el ritmo!",
@@ -315,14 +315,14 @@ enum L10n {
         case .firstMate:
             return (
                 s("⚓ Promoted to First Mate!",
-                  "⚓ 부선장 승진!",
+                  "⚓ 항해사 승진!",
                   "⚓ 副船長に昇進！",
                   "⚓ 晋升为大副！",
                   "⚓ ¡Ascendido a Primer Oficial!",
                   "⚓ Promu Second !",
                   "⚓ Zum Ersten Maat befördert!"),
                 s("Almost there! One more push to Captain!",
-                  "거의 다 왔어! 조금만 더 하면 선장이다!",
+                  "블랙펄의 키가 보인다! 조금만 더 하면 캡틴이다!",
                   "もう少しで船長だ！あと一押し！",
                   "快了！再加把劲就是船长！",
                   "¡Casi llegas! ¡Un push más y eres Capitán!",
@@ -332,14 +332,14 @@ enum L10n {
         case .deckhand:
             return (
                 s("🪝 Promoted to Deckhand!",
-                  "🪝 갑판원 승진!",
+                  "🪝 선원 승진!",
                   "🪝 甲板員に昇進！",
                   "🪝 晋升为水手！",
                   "🪝 ¡Ascendido a Marinero!",
                   "🪝 Promu Matelot !",
                   "🪝 Zum Matrosen befördert!"),
                 s("Water's going down. Keep it up!",
-                  "물이 빠지고 있어. 계속 가자!",
+                  "크라켄의 촉수에서 벗어났다! 계속 가자!",
                   "水が引いている。その調子だ！",
                   "水在退去。继续加油！",
                   "El agua baja. ¡Sigue así!",
@@ -349,14 +349,14 @@ enum L10n {
         case .castaway:
             return (
                 s("🏊 Still struggling, but improving!",
-                  "🏊 아직 위험하지만 나아지고 있어!",
+                  "🏊 아직 심해지만 수면이 보인다!",
                   "🏊 まだ危険だが改善中！",
                   "🏊 还在挣扎，但在好转！",
                   "🏊 ¡Aún luchas, pero mejoras!",
                   "🏊 Tu luttes encore, mais ça s'améliore !",
                   "🏊 Noch im Kampf, aber es wird besser!"),
                 s("Keep committing to get back on deck!",
-                  "계속 커밋해서 배 위로 올라가자!",
+                  "블랙펄의 갑판이 보인다! 커밋으로 올라가자!",
                   "コミットを続けて船に戻れ！",
                   "继续提交回到甲板上！",
                   "¡Sigue commiteando para volver a bordo!",
@@ -371,7 +371,7 @@ enum L10n {
     // MARK: Death Screen
     static var davyJonersLocker: String { s(
         "DAVY JONES' LOCKER",
-        "심해의 무덤",
+        "데비 존스의 해저 감옥",
         "海の墓場",
         "深海坟墓",
         "TUMBA MARINA",
@@ -380,7 +380,7 @@ enum L10n {
     )}
     static var commitToResurrect: String { s(
         "Commit to Resurrect",
-        "커밋하면 부활",
+        "커밋하면 블랙펄이 돌아온다",
         "コミットで復活",
         "提交即复活",
         "Commitea para Revivir",
