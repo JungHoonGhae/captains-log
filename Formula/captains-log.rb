@@ -1,8 +1,8 @@
 class CaptainsLog < Formula
   desc "Pirate-themed macOS menu bar app that gamifies dev velocity"
   homepage "https://github.com/JungHoonGhae/captains-log"
-  url "https://github.com/JungHoonGhae/captains-log/releases/download/v0.2.0/captains-log-macos.tar.gz"
-  sha256 "89b9530b25002588bbbca2acd4aaad1f644c04cf6dcb36844bbd8357f3099718"
+  url "https://github.com/JungHoonGhae/captains-log/releases/download/v0.3.0/captains-log-macos.tar.gz"
+  sha256 "441c125edd8b2b57794df58ec60883fd55b0d672b476d81bfbbc254bfc998e31"
   license "MIT"
 
   depends_on :macos
