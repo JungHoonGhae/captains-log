@@ -128,36 +128,16 @@ struct WaterAnimationView: View {
 
                 // Death overlay
                 if waterLevel >= 100 {
-                    Color.black.opacity(0.4)
-                    VStack(spacing: 4) {
-                        Text("☠️ DAVY JONES' LOCKER ☠️")
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundColor(.red)
-                            .shadow(color: .black, radius: 3)
-                        Text("COMMIT TO RESURRECT")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.red.opacity(0.9))
-                            .shadow(color: .black, radius: 2)
-                    }
+                    Color.black.opacity(0.5)
+                    Text("Commit to Resurrect")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .tracking(1)
                 }
-
-                // Rank badge (top-left)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(rank.emoji + " " + rank.title)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.8), radius: 2)
-                }
-                .padding(6)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .frame(height: 130)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.black.opacity(0.2), lineWidth: 1)
-        )
+        .frame(height: 110)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .onAppear { startAnimations() }
     }
 

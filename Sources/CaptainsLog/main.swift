@@ -10,6 +10,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
+        // Setup notifications
+        NotificationManager.shared.requestPermission()
+
         // Detect GitHub CLI + auto-scan repos on first launch
         gitTracker.detectGitHub()
         gitTracker.autoScanIfNeeded()
@@ -17,7 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 500)
+        popover.contentSize = NSSize(width: 320, height: 620)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(
             rootView: ContentView(tracker: gitTracker)
@@ -29,7 +32,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.target = self
         }
 
-        // Initial refresh after a short delay (let GitHub detection finish)
+        // Initial refresh after GitHub detection
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             self?.updateStatus()
         }
@@ -57,6 +60,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if let button = self.statusItem.button {
                 button.title = self.gitTracker.menuBarDisplay
             }
+            // Check for rank changes → send notifications
+            NotificationManager.shared.checkRankChange(
+                newRank: self.gitTracker.rank,
+                waterLevel: self.gitTracker.waterLevel
+            )
         }
     }
 }

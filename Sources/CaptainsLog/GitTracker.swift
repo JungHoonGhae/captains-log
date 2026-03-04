@@ -47,27 +47,48 @@ enum PirateRank: String {
     }
 }
 
-enum RepoActivity: Comparable {
-    case active      // commit within 24h
-    case recent      // commit within 7 days
-    case stale       // commit within 30 days
-    case dead        // no commit in 30+ days
+enum ShipType: Int, Comparable {
+    case flagship  = 0  // 5+ commits today — leading the fleet
+    case warship   = 1  // active today
+    case galleon   = 2  // active within 3 days
+    case sloop     = 3  // active within 7 days
+    case dinghy    = 4  // within 30 days
+    case shipwreck = 5  // 30+ days — sunk
 
-    var label: String {
+    static func < (lhs: ShipType, rhs: ShipType) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+
+    var emoji: String {
         switch self {
-        case .active: return "Active"
-        case .recent: return "Recent"
-        case .stale:  return "Stale"
-        case .dead:   return "Dead"
+        case .flagship:  return "🚀"
+        case .warship:   return "⚔️"
+        case .galleon:   return "⛵"
+        case .sloop:     return "🚣"
+        case .dinghy:    return "⚓"
+        case .shipwreck: return "💀"
         }
     }
 
-    var color: String {
+    var label: String {
         switch self {
-        case .active: return "green"
-        case .recent: return "yellow"
-        case .stale:  return "orange"
-        case .dead:   return "red"
+        case .flagship:  return "Flagship"
+        case .warship:   return "Warship"
+        case .galleon:   return "Galleon"
+        case .sloop:     return "Sloop"
+        case .dinghy:    return "Dinghy"
+        case .shipwreck: return "Shipwreck"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .flagship:  return "Leading the fleet!"
+        case .warship:   return "Battle-ready"
+        case .galleon:   return "Sailing steady"
+        case .sloop:     return "Drifting..."
+        case .dinghy:    return "Barely afloat"
+        case .shipwreck: return "Sunk to the depths"
         }
     }
 }
@@ -80,15 +101,15 @@ struct RepoInfo: Identifiable {
     var id: String { path }
     var name: String { (path as NSString).lastPathComponent }
 
-    var activity: RepoActivity {
-        guard let last = lastCommit else { return .dead }
+    var shipType: ShipType {
+        guard let last = lastCommit else { return .shipwreck }
         let hours = Date().timeIntervalSince(last) / 3600
-        switch hours {
-        case ..<24:   return .active
-        case ..<168:  return .recent   // 7 days
-        case ..<720:  return .stale    // 30 days
-        default:      return .dead
-        }
+        if todayCommits >= 5 { return .flagship }
+        if hours < 24 { return .warship }
+        if hours < 72 { return .galleon }
+        if hours < 168 { return .sloop }
+        if hours < 720 { return .dinghy }
+        return .shipwreck
     }
 
     var lastCommitText: String {
@@ -128,7 +149,7 @@ class GitTracker: ObservableObject {
     @Published var isScanning: Bool = false
     private var hasScannedOnce: Bool = false
 
-    private static let configPath = NSHomeDirectory() + "/.ship-or-die.json"
+    private static let configPath = NSHomeDirectory() + "/.captains-log.json"
 
     var rank: PirateRank {
         switch waterLevel {
@@ -146,10 +167,20 @@ class GitTracker: ObservableObject {
     var timeSinceLastPush: String { formatTimeAgo(githubLastPush) }
     var timeSinceLastActivity: String { formatTimeAgo(lastActivity) }
 
-    var activeRepos: [RepoInfo] { repos.filter { $0.activity == .active } }
-    var recentRepos: [RepoInfo] { repos.filter { $0.activity == .recent } }
-    var staleRepos: [RepoInfo] { repos.filter { $0.activity == .stale } }
-    var deadRepos: [RepoInfo] { repos.filter { $0.activity == .dead } }
+    var flagships: [RepoInfo]  { repos.filter { $0.shipType == .flagship } }
+    var warships: [RepoInfo]   { repos.filter { $0.shipType == .warship } }
+    var galleons: [RepoInfo]   { repos.filter { $0.shipType == .galleon } }
+    var sloops: [RepoInfo]     { repos.filter { $0.shipType == .sloop } }
+    var dinghies: [RepoInfo]   { repos.filter { $0.shipType == .dinghy } }
+    var shipwrecks: [RepoInfo] { repos.filter { $0.shipType == .shipwreck } }
+
+    var sailingCount: Int { repos.filter { $0.shipType <= .sloop }.count }
+    var fleetStrength: String {
+        let sailing = sailingCount
+        let total = repos.count
+        guard total > 0 else { return "No fleet" }
+        return "\(sailing)/\(total) ships sailing"
+    }
 
     init() {
         loadConfig()
@@ -199,7 +230,7 @@ class GitTracker: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
-        panel.message = "Select yer git repositories, Captain!"
+        panel.message = "Select yer repos, Captain!"
         panel.prompt = "Add Repo"
 
         if panel.runModal() == .OK {
@@ -342,9 +373,9 @@ class GitTracker: ObservableObject {
                 totalTodayLocal += info.todayCommits
             }
 
-            // Sort: active first, then by last commit (most recent first)
+            // Sort: best ships first, then by last commit
             repoInfos.sort { a, b in
-                if a.activity != b.activity { return a.activity < b.activity }
+                if a.shipType != b.shipType { return a.shipType < b.shipType }
                 guard let aDate = a.lastCommit else { return false }
                 guard let bDate = b.lastCommit else { return true }
                 return aDate > bDate
