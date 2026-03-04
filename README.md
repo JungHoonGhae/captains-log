@@ -171,6 +171,14 @@ Config is stored at `~/.captains-log.json`:
 
 <br />
 
+## Support
+
+If this tool helps you, consider supporting its maintenance:
+
+<a href="https://www.buymeacoffee.com/lucas.ghae">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+</a>
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
