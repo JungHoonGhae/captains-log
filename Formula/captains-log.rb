@@ -1,7 +1,7 @@
 class CaptainsLog < Formula
   desc "Pirate-themed macOS menu bar app that gamifies dev velocity"
-  homepage "https://github.com/JungHoonGhae/ship-or-die"
-  url "https://github.com/JungHoonGhae/ship-or-die/releases/download/v0.1.0/captains-log-macos.tar.gz"
+  homepage "https://github.com/JungHoonGhae/captains-log"
+  url "https://github.com/JungHoonGhae/captains-log/releases/download/v0.1.0/captains-log-macos.tar.gz"
   sha256 "PLACEHOLDER_SHA256"
   license "MIT"
 

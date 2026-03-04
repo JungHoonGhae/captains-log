@@ -6,8 +6,8 @@
   <p align="center">
     <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-5.9-orange.svg" /></a>
     <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/macOS-13%2B-blue.svg" /></a>
-    <a href="https://github.com/JungHoonGhae/ship-or-die/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
-    <a href="https://github.com/JungHoonGhae/ship-or-die/actions/workflows/ci.yml"><img src="https://github.com/JungHoonGhae/ship-or-die/actions/workflows/ci.yml/badge.svg" /></a>
+    <a href="https://github.com/JungHoonGhae/captains-log/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+    <a href="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml"><img src="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml/badge.svg" /></a>
   </p>
 </p>
 
@@ -30,8 +30,8 @@ brew tap JungHoonGhae/captains-log && brew install captains-log
 <summary>Build from source</summary>
 
 ```bash
-git clone https://github.com/JungHoonGhae/ship-or-die.git
-cd ship-or-die && swift build -c release
+git clone https://github.com/JungHoonGhae/captains-log.git
+cd captains-log && swift build -c release
 cp .build/release/CaptainsLog /usr/local/bin/
 ```
 
