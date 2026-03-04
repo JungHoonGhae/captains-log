@@ -58,10 +58,10 @@ struct WaterAnimationView: View {
                     Color.black.opacity(0.55)
                         .allowsHitTesting(false)
                     VStack(spacing: 4) {
-                        Text("DAVY JONES' LOCKER")
+                        Text(L10n.davyJonersLocker)
                             .font(.system(size: 10, weight: .heavy))
                             .tracking(3)
-                        Text("Commit to Resurrect")
+                        Text(L10n.commitToResurrect)
                             .font(.system(size: 11, weight: .semibold))
                             .tracking(1)
                     }

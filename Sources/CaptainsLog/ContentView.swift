@@ -31,6 +31,7 @@ struct ContentView: View {
                 fleetCard
                 if tracker.githubConnected { githubCard }
                 shipsCard
+                settingsCard
                 quitRow
             }
             .padding(14)
@@ -44,7 +45,7 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Captain's Log")
+                Text(L10n.appTitle)
                     .font(.system(size: 13, weight: .semibold))
                 HStack(spacing: 4) {
                     Image(systemName: rankIcon)
@@ -55,13 +56,12 @@ struct ContentView: View {
                         .foregroundColor(rankColor)
                     Text("·")
                         .foregroundColor(.secondary.opacity(0.4))
-                    Text("\(Int(tracker.waterLevel))% water")
+                    Text("\(Int(tracker.waterLevel))% \(L10n.water)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
             }
             Spacer()
-            // Fleet strength pill
             Text(tracker.fleetStrength)
                 .font(.system(size: 9, weight: .medium))
                 .foregroundColor(.secondary)
@@ -83,7 +83,7 @@ struct ContentView: View {
     private var fleetCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("Fleet", systemImage: "sailboat.fill")
+                Label(L10n.fleet, systemImage: "sailboat.fill")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
                 Spacer()
@@ -93,17 +93,17 @@ struct ContentView: View {
             }
 
             HStack(spacing: 0) {
-                fleetStat(label: "Flagship", count: tracker.flagships.count, color: .yellow)
+                fleetStat(label: L10n.shipFlagship, count: tracker.flagships.count, color: .yellow)
                 Spacer()
-                fleetStat(label: "Warship", count: tracker.warships.count, color: .green)
+                fleetStat(label: L10n.shipWarship, count: tracker.warships.count, color: .green)
                 Spacer()
-                fleetStat(label: "Galleon", count: tracker.galleons.count, color: .blue)
+                fleetStat(label: L10n.shipGalleon, count: tracker.galleons.count, color: .blue)
                 Spacer()
-                fleetStat(label: "Sloop", count: tracker.sloops.count, color: .cyan)
+                fleetStat(label: L10n.shipSloop, count: tracker.sloops.count, color: .cyan)
                 Spacer()
-                fleetStat(label: "Docked", count: tracker.dinghies.count, color: .orange)
+                fleetStat(label: L10n.shipDinghy, count: tracker.dinghies.count, color: .orange)
                 Spacer()
-                fleetStat(label: "Sunk", count: tracker.shipwrecks.count, color: .red)
+                fleetStat(label: L10n.shipShipwreck, count: tracker.shipwrecks.count, color: .red)
             }
         }
         .card()
@@ -142,7 +142,7 @@ struct ContentView: View {
             VStack(alignment: .trailing, spacing: 1) {
                 Text("\(tracker.githubTodayPushes)")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                Text("pushes")
+                Text(L10n.pushes)
                     .font(.system(size: 8))
                     .foregroundColor(.secondary)
             }
@@ -150,7 +150,7 @@ struct ContentView: View {
             VStack(alignment: .trailing, spacing: 1) {
                 Text("\(tracker.todayCommits)")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
-                Text("local")
+                Text(L10n.local)
                     .font(.system(size: 8))
                     .foregroundColor(.secondary)
             }
@@ -175,7 +175,7 @@ struct ContentView: View {
     private var shipsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("Ships", systemImage: "list.bullet")
+                Label(L10n.ships, systemImage: "list.bullet")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.secondary)
                 Spacer()
@@ -199,7 +199,7 @@ struct ContentView: View {
             }
 
             if tracker.repos.isEmpty {
-                Text("Scanning for repos...")
+                Text(L10n.scanning)
                     .font(.system(size: 10))
                     .foregroundColor(.secondary.opacity(0.5))
             } else {
@@ -218,7 +218,7 @@ struct ContentView: View {
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) { showAllRepos.toggle() }
                     } label: {
-                        Text(showAllRepos ? "Show Less" : "Show All (\(tracker.repos.count))")
+                        Text(showAllRepos ? L10n.showLess : L10n.showAll(tracker.repos.count))
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.accentColor)
                     }
@@ -232,12 +232,10 @@ struct ContentView: View {
 
     private func shipRow(_ repo: RepoInfo) -> some View {
         HStack(spacing: 8) {
-            // Status dot
             Circle()
                 .fill(shipDotColor(repo.shipType))
                 .frame(width: 6, height: 6)
 
-            // Name + type
             VStack(alignment: .leading, spacing: 0) {
                 Text(repo.name)
                     .font(.system(size: 11, weight: repo.shipType <= .warship ? .medium : .regular))
@@ -276,12 +274,40 @@ struct ContentView: View {
         .padding(.vertical, 5)
     }
 
+    // MARK: - Settings Card
+
+    private var settingsCard: some View {
+        HStack(spacing: 8) {
+            Label(L10n.language, systemImage: "globe")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            Picker("", selection: Binding(
+                get: { L10n.lang },
+                set: { newLang in
+                    L10n.lang = newLang
+                    tracker.saveConfig()
+                    tracker.objectWillChange.send()
+                }
+            )) {
+                ForEach(Language.allCases, id: \.self) { lang in
+                    Text("\(lang.flag) \(lang.displayName)").tag(lang)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(width: 130)
+        }
+        .card()
+    }
+
     // MARK: - Footer
 
     private var quitRow: some View {
         HStack {
             Spacer()
-            Button("Quit Captain's Log") {
+            Button("\(L10n.quit) \(L10n.appTitle)") {
                 NSApplication.shared.terminate(nil)
             }
             .font(.system(size: 10))

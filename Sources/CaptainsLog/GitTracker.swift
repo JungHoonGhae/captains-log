@@ -5,6 +5,7 @@ struct RepoConfig: Codable {
     var repos: [String]
     var githubEnabled: Bool?
     var hasScannedOnce: Bool?
+    var language: String?
 }
 
 enum PirateRank: String {
@@ -24,16 +25,10 @@ enum PirateRank: String {
         }
     }
 
-    var title: String { rawValue }
+    var title: String { L10n.rankTitle(self) }
 
     var quote: String {
-        switch self {
-        case .captain:   return "Ye be a true Captain! The sea bows to ye!"
-        case .firstMate: return "The sea be callin', mate... better start shippin'!"
-        case .deckhand:  return "Ship's takin' water! Commit or walk the plank!"
-        case .castaway:  return "Abandon ship! Ye be drownin'!"
-        case .davyJones: return "To Davy Jones' Locker with ye! COMMIT NOW!"
-        }
+        L10n.rankQuote(self)
     }
 
     var sceneEmoji: String {
@@ -70,27 +65,8 @@ enum ShipType: Int, Comparable {
         }
     }
 
-    var label: String {
-        switch self {
-        case .flagship:  return "Flagship"
-        case .warship:   return "Warship"
-        case .galleon:   return "Galleon"
-        case .sloop:     return "Sloop"
-        case .dinghy:    return "Dinghy"
-        case .shipwreck: return "Shipwreck"
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .flagship:  return "Leading the fleet!"
-        case .warship:   return "Battle-ready"
-        case .galleon:   return "Sailing steady"
-        case .sloop:     return "Drifting..."
-        case .dinghy:    return "Barely afloat"
-        case .shipwreck: return "Sunk to the depths"
-        }
-    }
+    var label: String { L10n.shipLabel(self) }
+    var description: String { L10n.shipDesc(self) }
 }
 
 struct RepoInfo: Identifiable {
@@ -113,17 +89,17 @@ struct RepoInfo: Identifiable {
     }
 
     var lastCommitText: String {
-        guard let last = lastCommit else { return "No commits" }
+        guard let last = lastCommit else { return L10n.noCommits }
         let seconds = Int(Date().timeIntervalSince(last))
-        if seconds < 60 { return "Just now" }
+        if seconds < 60 { return L10n.justNow }
         let minutes = seconds / 60
-        if minutes < 60 { return "\(minutes)m ago" }
+        if minutes < 60 { return L10n.minutesAgo(minutes) }
         let hours = minutes / 60
-        if hours < 24 { return "\(hours)h ago" }
+        if hours < 24 { return L10n.hoursAgo(hours) }
         let days = hours / 24
-        if days < 30 { return "\(days)d ago" }
+        if days < 30 { return L10n.daysAgo(days) }
         let months = days / 30
-        return "\(months)mo ago"
+        return L10n.monthsAgo(months)
     }
 }
 
@@ -178,8 +154,8 @@ class GitTracker: ObservableObject {
     var fleetStrength: String {
         let sailing = sailingCount
         let total = repos.count
-        guard total > 0 else { return "No fleet" }
-        return "\(sailing)/\(total) ships sailing"
+        guard total > 0 else { return L10n.noFleet }
+        return L10n.fleetStrength(sailing, total)
     }
 
     init() {
@@ -196,10 +172,13 @@ class GitTracker: ObservableObject {
         repoPaths = config.repos
         githubEnabled = config.githubEnabled ?? false
         hasScannedOnce = config.hasScannedOnce ?? false
+        if let langStr = config.language, let lang = Language(rawValue: langStr) {
+            L10n.lang = lang
+        }
     }
 
     func saveConfig() {
-        let config = RepoConfig(repos: repoPaths, githubEnabled: githubEnabled, hasScannedOnce: hasScannedOnce)
+        let config = RepoConfig(repos: repoPaths, githubEnabled: githubEnabled, hasScannedOnce: hasScannedOnce, language: L10n.lang.rawValue)
         guard let data = try? JSONEncoder().encode(config) else { return }
         try? data.write(to: URL(fileURLWithPath: Self.configPath))
     }
@@ -230,8 +209,8 @@ class GitTracker: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = true
-        panel.message = "Select yer repos, Captain!"
-        panel.prompt = "Add Repo"
+        panel.message = L10n.selectRepos
+        panel.prompt = L10n.addRepo
 
         if panel.runModal() == .OK {
             for url in panel.urls {
@@ -435,15 +414,15 @@ class GitTracker: ObservableObject {
     func formatTimeAgo(_ date: Date?) -> String {
         guard let date else { return "—" }
         let seconds = Int(Date().timeIntervalSince(date))
-        if seconds < 60 { return "Just now" }
+        if seconds < 60 { return L10n.justNow }
         let minutes = seconds / 60
-        if minutes < 60 { return "\(minutes)m ago" }
+        if minutes < 60 { return L10n.minutesAgo(minutes) }
         let hours = minutes / 60
-        if hours < 24 { return "\(hours)h ago" }
+        if hours < 24 { return L10n.hoursAgo(hours) }
         let days = hours / 24
-        if days < 30 { return "\(days)d ago" }
+        if days < 30 { return L10n.daysAgo(days) }
         let months = days / 30
-        return "\(months)mo ago"
+        return L10n.monthsAgo(months)
     }
 
     private func shell(_ command: String) -> String {
