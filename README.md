@@ -1,19 +1,13 @@
 <p align="center">
-  <h1 align="center">Captain's Log</h1>
-  <p align="center">
-    Ship or die. Your repos are your fleet.
-  </p>
-  <p align="center">
-    <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-5.9-orange.svg" /></a>
-    <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/macOS-13%2B-blue.svg" /></a>
-    <a href="https://github.com/JungHoonGhae/captains-log/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
-    <a href="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml"><img src="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml/badge.svg" /></a>
-  </p>
+  <img src="assets/social-preview.png" width="720" />
 </p>
 
-<br />
-
-> **Captain's Log** is a native macOS menu bar app that gamifies your dev velocity with a pirate theme. Stop committing? Your ship sinks. Your rank drops. Davy Jones claims your soul. The only way out is to **commit**.
+<p align="center">
+  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-5.9-orange.svg" /></a>
+  <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/macOS-13%2B-blue.svg" /></a>
+  <a href="https://github.com/JungHoonGhae/captains-log/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+  <a href="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml"><img src="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml/badge.svg" /></a>
+</p>
 
 <br />
 
