@@ -41,7 +41,7 @@ enum L10n {
     static var lang: Language = .system
 
     // MARK: App
-    static var appTitle: String { s("Captain's Log", "선장의 항해일지", "航海日誌", "航海日志", "Diario del Capitán", "Journal du Capitaine", "Logbuch des Kapitäns") }
+    static var appTitle: String { s("Captain's Log", "캡틴스 로그", "キャプテンズ・ログ", "船长日志", "Diario del Capitán", "Journal du Capitaine", "Logbuch des Kapitäns") }
 
     // MARK: Ranks
     static var rankCaptain: String { s("Captain", "선장", "船長", "船长", "Capitán", "Capitaine", "Kapitän") }
