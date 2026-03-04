@@ -46,7 +46,7 @@ struct WaterAnimationView: View {
     let waterLevel: Double
     let rank: PirateRank
 
-    private var level: CGFloat { min(CGFloat(waterLevel) / 100.0, 1.0) }
+    private var level: CGFloat { 0.12 + min(CGFloat(waterLevel) / 100.0, 1.0) * 0.78 }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
@@ -76,7 +76,7 @@ struct WaterAnimationView: View {
                 }
             }
         }
-        .frame(height: 160)
+        .frame(height: 200)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 

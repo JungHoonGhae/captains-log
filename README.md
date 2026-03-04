@@ -17,8 +17,7 @@
 
 <br />
 
-<!-- Screenshot placeholder — replace with actual screenshot -->
-<!-- <p align="center"><img src="assets/screenshot.png" width="320" /></p> -->
+<p align="center"><img src="assets/demo.gif" width="320" /></p>
 
 ## Install
 
