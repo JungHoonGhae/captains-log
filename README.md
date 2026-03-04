@@ -16,10 +16,6 @@ Ship or Die. A pirate-themed macOS menu bar app that gamifies your dev velocity.
   <img src="assets/social-preview.png" width="720" />
 </p>
 
-<p align="center">
-  <img src="assets/demo.gif" width="320" />
-</p>
-
 ## Install
 
 ```bash
@@ -58,6 +54,10 @@ They're sinking.
 There's no ambient pressure to keep shipping. Streak counters are boring. GitHub's contribution graph is too abstract. You need something visceral — **a ship that sinks when you stop coding.**
 
 **Captain's Log puts that pressure in your menu bar.**
+
+<p align="center">
+  <img src="assets/demo.gif" width="320" />
+</p>
 
 <br />
 
