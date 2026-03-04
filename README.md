@@ -1,17 +1,24 @@
+# Captain's Log
+
+[![GitHub stars](https://img.shields.io/github/stars/JungHoonGhae/captains-log)](https://github.com/JungHoonGhae/captains-log/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/JungHoonGhae/captains-log/blob/main/LICENSE)
+[![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)](https://swift.org)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-blue.svg)](https://www.apple.com/macos/)
+[![CI](https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml/badge.svg)](https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml)
+
+| [<img alt="GitHub Follow" src="https://img.shields.io/github/followers/JungHoonGhae?style=flat-square&logo=github&labelColor=black&color=24292f" width="156px" />](https://github.com/JungHoonGhae) | Follow [@JungHoonGhae](https://github.com/JungHoonGhae) on GitHub for more projects. |
+| :-----| :----- |
+| [<img alt="X link" src="https://img.shields.io/badge/Follow-%40lucas_ghae-000000?style=flat-square&logo=x&labelColor=black" width="156px" />](https://x.com/lucas_ghae) | Follow [@lucas_ghae](https://x.com/lucas_ghae) on X for updates. |
+
+Ship or Die. A pirate-themed macOS menu bar app that gamifies your dev velocity. Stop committing and your ship sinks.
+
 <p align="center">
   <img src="assets/social-preview.png" width="720" />
 </p>
 
 <p align="center">
-  <a href="https://swift.org"><img src="https://img.shields.io/badge/Swift-5.9-orange.svg" /></a>
-  <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/macOS-13%2B-blue.svg" /></a>
-  <a href="https://github.com/JungHoonGhae/captains-log/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
-  <a href="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml"><img src="https://github.com/JungHoonGhae/captains-log/actions/workflows/ci.yml/badge.svg" /></a>
+  <img src="assets/demo.gif" width="320" />
 </p>
-
-<br />
-
-<p align="center"><img src="assets/demo.gif" width="320" /></p>
 
 ## Install
 
@@ -132,6 +139,7 @@ Water rises from 0% → 100% over **8 hours** of inactivity. Any commit or push 
 - 🐙 **GitHub integration** — Via `gh` CLI, no token setup needed
 - 📂 **Auto-scan repos** — Finds git repos in ~/Projects, ~/Developer, ~/Desktop, etc.
 - 🖱️ **Menu bar native** — Always visible, zero friction, pure SwiftUI
+- 🌍 **7 languages** — English, Korean, Japanese, Chinese, Spanish, French, German
 
 <br />
 
@@ -162,6 +170,10 @@ Config is stored at `~/.captains-log.json`:
 - **GitHub**: Auto-detected if `gh auth status` shows logged in
 
 <br />
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## License
 
