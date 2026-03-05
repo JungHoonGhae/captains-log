@@ -8,20 +8,24 @@ class NotificationManager {
 
     func requestPermission() {}
 
-    func checkRankChange(newRank: PirateRank, waterLevel: Double) {
+    func checkRankChange(newRank: PirateRank, waterLevel: Double, captainName: String = "") {
         defer { previousRank = newRank }
 
         guard let oldRank = previousRank else { return }
         guard oldRank != newRank else { return }
 
+        let name = captainName.isEmpty ? nil : captainName
+
         if newRank > oldRank {
             let msg = L10n.notifSinking(newRank)
-            send(title: msg.title, body: msg.body)
+            let title = name.map { "\($0), \(msg.title)" } ?? msg.title
+            send(title: title, body: msg.body)
         }
 
         if newRank < oldRank {
             let msg = L10n.notifRising(newRank, from: oldRank)
-            send(title: msg.title, body: msg.body)
+            let title = name.map { "\($0), \(msg.title)" } ?? msg.title
+            send(title: title, body: msg.body)
         }
     }
 

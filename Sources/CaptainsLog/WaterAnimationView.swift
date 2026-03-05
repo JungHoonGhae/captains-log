@@ -45,6 +45,9 @@ private let skinTone = Color(red: 0.88, green: 0.72, blue: 0.56)
 struct WaterAnimationView: View {
     let waterLevel: Double
     let rank: PirateRank
+    var navigatorEnabled: Bool = false
+    var totalDirtyFiles: Int = 0
+    var totalUnpushedCommits: Int = 0
 
     private var level: CGFloat { 0.12 + min(CGFloat(waterLevel) / 100.0, 1.0) * 0.78 }
 
@@ -74,10 +77,49 @@ struct WaterAnimationView: View {
                         .opacity(flash > 0.92 ? 0.3 : 0)
                         .allowsHitTesting(false)
                 }
+
+                if navigatorEnabled {
+                    navigatorOverlay
+                }
             }
         }
         .frame(height: 200)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var navigatorOverlay: some View {
+        VStack {
+            Spacer()
+            HStack(spacing: 12) {
+                if totalDirtyFiles == 0 && totalUnpushedCommits == 0 {
+                    Text("\u{1F3DD}\u{FE0F} \(L10n.allStashed)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.green)
+                } else {
+                    if totalDirtyFiles > 0 {
+                        Text("\u{1F48E} \(totalDirtyFiles) \(L10n.dug)")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.orange)
+                    }
+                    if totalUnpushedCommits > 0 {
+                        Text("\u{1F4E6} \(totalUnpushedCommits) \(L10n.stowed)")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.cyan)
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [.black.opacity(0.45), .clear],
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+            )
+        }
+        .allowsHitTesting(false)
     }
 
     // MARK: - Scene Canvas

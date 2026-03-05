@@ -1,11 +1,76 @@
 import Foundation
 import AppKit
+import ServiceManagement
+
+enum Weather {
+    case clear, cloudy, rainy, stormy, hurricane
+
+    var emoji: String {
+        switch self {
+        case .clear:     return "\u{2600}\u{FE0F}"
+        case .cloudy:    return "\u{26C5}"
+        case .rainy:     return "\u{1F327}\u{FE0F}"
+        case .stormy:    return "\u{26C8}\u{FE0F}"
+        case .hurricane: return "\u{1F300}"
+        }
+    }
+
+    var label: String { L10n.weatherLabel(self) }
+}
+
+enum VoyageRange: String, CaseIterable {
+    case day = "1d"
+    case threeDays = "3d"
+    case week = "7d"
+    case month = "30d"
+    case year = "1y"
+
+    var days: Int {
+        switch self {
+        case .day:       return 1
+        case .threeDays: return 3
+        case .week:      return 7
+        case .month:     return 30
+        case .year:      return 365
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .day:       return L10n.range1d
+        case .threeDays: return L10n.range3d
+        case .week:      return L10n.range7d
+        case .month:     return L10n.range30d
+        case .year:      return L10n.range1y
+        }
+    }
+}
+
+enum CardType: String, Codable, CaseIterable, Identifiable {
+    case navigator, fleet, ships, coffee
+
+    var id: String { rawValue }
+
+    static let defaultOrder: [CardType] = [.navigator, .fleet, .ships, .coffee]
+}
 
 struct RepoConfig: Codable {
     var repos: [String]
     var githubEnabled: Bool?
     var hasScannedOnce: Bool?
     var language: String?
+    var sleepEnabled: Bool?
+    var sleepStart: Int?   // 0-23
+    var sleepEnd: Int?     // 0-23
+    var sleepDays: [Int]?  // 1=Sun, 2=Mon, ..., 7=Sat (Apple Calendar weekday)
+    var shipViewStyle: String?
+    var navigatorEnabled: Bool?
+    var captainName: String?
+    var cardOrder: [String]?
+    var showWeather: Bool?
+    var showChart: Bool?
+    var showVoyage: Bool?
+    var showTreasure: Bool?
 }
 
 enum PirateRank: String {
@@ -50,6 +115,8 @@ enum ShipType: Int, Comparable {
     case dinghy    = 4  // within 30 days
     case shipwreck = 5  // 30+ days — sunk
 
+    static let allTypes: [ShipType] = [.flagship, .warship, .galleon, .sloop, .dinghy, .shipwreck]
+
     static func < (lhs: ShipType, rhs: ShipType) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
@@ -73,6 +140,8 @@ struct RepoInfo: Identifiable {
     let path: String
     var lastCommit: Date?
     var todayCommits: Int = 0
+    var dirtyFiles: Int = 0
+    var unpushedCommits: Int = 0
 
     var id: String { path }
     var name: String { (path as NSString).lastPathComponent }
@@ -114,12 +183,68 @@ class GitTracker: ObservableObject {
     @Published var todayCommits: Int = 0
     @Published var lastActivity: Date?
 
+    // Weekly activity
+    @Published var weeklyCommits: [Int] = Array(repeating: 0, count: 7)
+    @Published var commitStreak: Int = 0
+
+    // Voyage history (for arbitrary ranges)
+    @Published var voyageData: [Int] = []
+    @Published var voyageRange: VoyageRange = .day
+
     // GitHub
     @Published var githubEnabled: Bool = false
     @Published var githubUsername: String = ""
     @Published var githubLastPush: Date?
     @Published var githubTodayPushes: Int = 0
     @Published var githubConnected: Bool = false
+
+    // Ship view style
+    @Published var shipViewStyle: ShipViewStyle = .classic
+
+    // Navigator
+    @Published var navigatorEnabled: Bool = true
+    @Published var totalDirtyFiles: Int = 0
+    @Published var totalUnpushedCommits: Int = 0
+
+    // Captain name
+    @Published var captainName: String = ""
+
+    // Card order
+    @Published var cardOrder: [CardType] = CardType.defaultOrder
+
+    // Launch at login
+    @Published var launchAtLogin: Bool = false
+
+    // Navigator element toggles
+    @Published var showWeather: Bool = true
+    @Published var showChart: Bool = true
+    @Published var showVoyage: Bool = true
+    @Published var showTreasure: Bool = true
+
+    // Sleep mode
+    @Published var sleepEnabled: Bool = false
+    @Published var sleepStart: Int = 23    // 0-23
+    @Published var sleepEnd: Int = 7       // 0-23
+    @Published var sleepDays: Set<Int> = Set(1...7)  // 1=Sun..7=Sat
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLogin = enabled
+        if enabled {
+            try? SMAppService.mainApp.register()
+        } else {
+            try? SMAppService.mainApp.unregister()
+        }
+    }
+
+    func toggleSleepDay(_ day: Int) {
+        if sleepDays.contains(day) {
+            sleepDays.remove(day)
+        } else {
+            sleepDays.insert(day)
+        }
+        saveConfig()
+        refresh()
+    }
 
     // Scan state
     @Published var isScanning: Bool = false
@@ -134,6 +259,70 @@ class GitTracker: ObservableObject {
         case ..<60:  return .deckhand
         case ..<80:  return .castaway
         default:     return .davyJones
+        }
+    }
+
+    var isInSleepWindow: Bool {
+        guard sleepEnabled else { return false }
+        let cal = Calendar.current
+        let now = Date()
+        let weekday = cal.component(.weekday, from: now)
+        guard sleepDays.contains(weekday) else { return false }
+        let hour = cal.component(.hour, from: now)
+        if sleepStart < sleepEnd {
+            return hour >= sleepStart && hour < sleepEnd
+        } else {
+            return hour >= sleepStart || hour < sleepEnd
+        }
+    }
+
+    var hullDots: Int {
+        switch rank {
+        case .captain:   return 5
+        case .firstMate: return 4
+        case .deckhand:  return 3
+        case .castaway:  return 2
+        case .davyJones: return 1
+        }
+    }
+
+    var voyageProgress: Int { min(todayCommits, 5) }
+
+    var inactivityStatus: String {
+        guard let last = lastActivity else {
+            return L10n.sunkTime("8h")
+        }
+        let minutes = Int(Date().timeIntervalSince(last) / 60)
+        let timeStr: String
+        if minutes < 60 {
+            timeStr = "\(minutes)m"
+        } else {
+            let h = minutes / 60
+            let m = minutes % 60
+            timeStr = m > 0 ? "\(h)h\(m)m" : "\(h)h"
+        }
+
+        switch rank {
+        case .captain, .firstMate:
+            return L10n.anchoredTime(timeStr)
+        case .deckhand:
+            return L10n.driftingTime(timeStr)
+        case .castaway:
+            return L10n.floodingTime(timeStr)
+        case .davyJones:
+            return L10n.sunkTime(timeStr)
+        }
+    }
+
+    var displayName: String { captainName.isEmpty ? "Captain" : captainName }
+
+    var weather: Weather {
+        switch waterLevel {
+        case ..<20:  return .clear
+        case ..<40:  return .cloudy
+        case ..<60:  return .rainy
+        case ..<80:  return .stormy
+        default:     return .hurricane
         }
     }
 
@@ -160,6 +349,7 @@ class GitTracker: ObservableObject {
 
     init() {
         loadConfig()
+        launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
     // MARK: - Config
@@ -172,13 +362,33 @@ class GitTracker: ObservableObject {
         repoPaths = config.repos
         githubEnabled = config.githubEnabled ?? false
         hasScannedOnce = config.hasScannedOnce ?? false
+        navigatorEnabled = config.navigatorEnabled ?? true
+        captainName = config.captainName ?? ""
+        if let order = config.cardOrder {
+            let parsed = order.compactMap { CardType(rawValue: $0) }
+            let missing = CardType.defaultOrder.filter { !parsed.contains($0) }
+            cardOrder = parsed + missing
+        }
+        sleepEnabled = config.sleepEnabled ?? false
+        sleepStart = config.sleepStart ?? 23
+        sleepEnd = config.sleepEnd ?? 7
+        if let days = config.sleepDays {
+            sleepDays = Set(days)
+        }
         if let langStr = config.language, let lang = Language(rawValue: langStr) {
             L10n.lang = lang
         }
+        if let styleStr = config.shipViewStyle, let style = ShipViewStyle(rawValue: styleStr) {
+            shipViewStyle = style
+        }
+        showWeather = config.showWeather ?? true
+        showChart = config.showChart ?? true
+        showVoyage = config.showVoyage ?? true
+        showTreasure = config.showTreasure ?? true
     }
 
     func saveConfig() {
-        let config = RepoConfig(repos: repoPaths, githubEnabled: githubEnabled, hasScannedOnce: hasScannedOnce, language: L10n.lang.rawValue)
+        let config = RepoConfig(repos: repoPaths, githubEnabled: githubEnabled, hasScannedOnce: hasScannedOnce, language: L10n.lang.rawValue, sleepEnabled: sleepEnabled, sleepStart: sleepStart, sleepEnd: sleepEnd, sleepDays: Array(sleepDays).sorted(), shipViewStyle: shipViewStyle.rawValue, navigatorEnabled: navigatorEnabled, captainName: captainName.isEmpty ? nil : captainName, cardOrder: cardOrder.map { $0.rawValue }, showWeather: showWeather, showChart: showChart, showVoyage: showVoyage, showTreasure: showTreasure)
         guard let data = try? JSONEncoder().encode(config) else { return }
         try? data.write(to: URL(fileURLWithPath: Self.configPath))
     }
@@ -338,10 +548,19 @@ class GitTracker: ObservableObject {
             var latestLocalCommit: Date?
             var totalTodayLocal = 0
 
+            var sumDirty = 0
+            var sumUnpushed = 0
+
             for path in repoPaths {
                 var info = RepoInfo(path: path)
                 info.lastCommit = lastCommitDate(in: path)
                 info.todayCommits = todayCommitCount(in: path)
+                if navigatorEnabled {
+                    info.dirtyFiles = dirtyFileCount(in: path)
+                    info.unpushedCommits = unpushedCommitCount(in: path)
+                    sumDirty += info.dirtyFiles
+                    sumUnpushed += info.unpushedCommits
+                }
                 repoInfos.append(info)
 
                 if let commit = info.lastCommit {
@@ -360,6 +579,10 @@ class GitTracker: ObservableObject {
                 return aDate > bDate
             }
 
+            // Weekly commits & streak
+            fetchWeeklyCommits()
+            fetchVoyageData()
+
             // GitHub
             fetchGitHubActivity()
 
@@ -376,6 +599,109 @@ class GitTracker: ObservableObject {
                 self.todayCommits = totalTodayLocal
                 self.lastActivity = mostRecent
                 self.waterLevel = self.calculateWaterLevel(lastActivity: mostRecent)
+                self.totalDirtyFiles = sumDirty
+                self.totalUnpushedCommits = sumUnpushed
+            }
+        }
+    }
+
+    // MARK: - Weekly Commits
+
+    private func fetchWeeklyCommits() {
+        let cal = Calendar.current
+        // Build 7 date boundaries: start of (today-6) ... start of (today) ... end of today
+        let todayStart = cal.startOfDay(for: Date())
+        var daily = Array(repeating: 0, count: 7)
+
+        for path in repoPaths {
+            // git log for the last 7 days
+            let sinceDate = cal.date(byAdding: .day, value: -6, to: todayStart)!
+            let sinceStr = ISO8601DateFormatter().string(from: sinceDate)
+            let output = shell("git -C \"\(path)\" log --format=%ct --since=\"\(sinceStr)\" 2>/dev/null")
+            let lines = output.split(separator: "\n")
+            for line in lines {
+                guard let ts = TimeInterval(line.trimmingCharacters(in: .whitespaces)) else { continue }
+                let commitDate = Date(timeIntervalSince1970: ts)
+                let dayOffset = cal.dateComponents([.day], from: cal.startOfDay(for: commitDate), to: todayStart).day ?? 0
+                let index = 6 - dayOffset  // 0=6 days ago, 6=today
+                if index >= 0 && index < 7 {
+                    daily[index] += 1
+                }
+            }
+        }
+
+        // Calculate streak: consecutive days with commits, counting back from today
+        var streak = 0
+        for i in stride(from: 6, through: 0, by: -1) {
+            if daily[i] > 0 {
+                streak += 1
+            } else {
+                break
+            }
+        }
+
+        DispatchQueue.main.async {
+            self.weeklyCommits = daily
+            self.commitStreak = streak
+        }
+    }
+
+    // MARK: - Voyage History
+
+    func fetchVoyageData(range: VoyageRange? = nil) {
+        let r = range ?? voyageRange
+        DispatchQueue.global(qos: .utility).async { [self] in
+            let cal = Calendar.current
+
+            if r == .day {
+                // Hourly breakdown for today
+                let todayStart = cal.startOfDay(for: Date())
+                var hourly = Array(repeating: 0, count: 24)
+
+                for path in repoPaths {
+                    let sinceStr = ISO8601DateFormatter().string(from: todayStart)
+                    let output = shell("git -C \"\(path)\" log --format=%ct --since=\"\(sinceStr)\" 2>/dev/null")
+                    let lines = output.split(separator: "\n")
+                    for line in lines {
+                        guard let ts = TimeInterval(line.trimmingCharacters(in: .whitespaces)) else { continue }
+                        let commitDate = Date(timeIntervalSince1970: ts)
+                        let hour = cal.component(.hour, from: commitDate)
+                        if hour >= 0 && hour < 24 {
+                            hourly[hour] += 1
+                        }
+                    }
+                }
+
+                DispatchQueue.main.async {
+                    self.voyageRange = r
+                    self.voyageData = hourly
+                }
+            } else {
+                // Daily breakdown
+                let days = r.days
+                let todayStart = cal.startOfDay(for: Date())
+                var daily = Array(repeating: 0, count: days)
+
+                for path in repoPaths {
+                    let sinceDate = cal.date(byAdding: .day, value: -(days - 1), to: todayStart)!
+                    let sinceStr = ISO8601DateFormatter().string(from: sinceDate)
+                    let output = shell("git -C \"\(path)\" log --format=%ct --since=\"\(sinceStr)\" 2>/dev/null")
+                    let lines = output.split(separator: "\n")
+                    for line in lines {
+                        guard let ts = TimeInterval(line.trimmingCharacters(in: .whitespaces)) else { continue }
+                        let commitDate = Date(timeIntervalSince1970: ts)
+                        let dayOffset = cal.dateComponents([.day], from: cal.startOfDay(for: commitDate), to: todayStart).day ?? 0
+                        let index = (days - 1) - dayOffset
+                        if index >= 0 && index < days {
+                            daily[index] += 1
+                        }
+                    }
+                }
+
+                DispatchQueue.main.async {
+                    self.voyageRange = r
+                    self.voyageData = daily
+                }
             }
         }
     }
@@ -384,7 +710,7 @@ class GitTracker: ObservableObject {
 
     private func calculateWaterLevel(lastActivity: Date?) -> Double {
         guard let last = lastActivity else { return 100 }
-        let hours = Date().timeIntervalSince(last) / 3600
+        let hours = adjustedInactiveHours(since: last)
         switch hours {
         case ..<1:   return max(0, hours / 1.0 * 20)
         case ..<2:   return 20 + (hours - 1) * 20
@@ -392,6 +718,62 @@ class GitTracker: ObservableObject {
         case ..<8:   return 60 + (hours - 4) / 4.0 * 20
         default:     return 100
         }
+    }
+
+    /// Returns the number of inactive hours since `lastActivity`,
+    /// subtracting any sleep-window hours that fall within that period.
+    private func adjustedInactiveHours(since lastActivity: Date) -> Double {
+        let now = Date()
+        let totalSeconds = now.timeIntervalSince(lastActivity)
+        guard sleepEnabled, totalSeconds > 0 else {
+            return totalSeconds / 3600
+        }
+
+        let sleepSeconds = sleepSecondsBetween(from: lastActivity, to: now)
+        return max(0, totalSeconds - sleepSeconds) / 3600
+    }
+
+    /// Counts total seconds that fall inside the daily sleep window
+    /// between two dates. Handles overnight windows (e.g. 23:00–07:00).
+    private func sleepSecondsBetween(from start: Date, to end: Date) -> Double {
+        let cal = Calendar.current
+        // Walk day-by-day from the date containing `start`
+        var total: Double = 0
+        var dayCursor = cal.startOfDay(for: start)
+        let endDay = cal.startOfDay(for: end).addingTimeInterval(86400) // include last day
+
+        while dayCursor < endDay {
+            // Check if this day's weekday is in sleepDays
+            let weekday = cal.component(.weekday, from: dayCursor)
+            guard sleepDays.contains(weekday) else {
+                dayCursor = dayCursor.addingTimeInterval(86400)
+                continue
+            }
+
+            let windowStart: Date
+            let windowEnd: Date
+
+            if sleepStart < sleepEnd {
+                // Same-day window, e.g. 1:00–6:00
+                windowStart = cal.date(bySettingHour: sleepStart, minute: 0, second: 0, of: dayCursor)!
+                windowEnd   = cal.date(bySettingHour: sleepEnd,   minute: 0, second: 0, of: dayCursor)!
+            } else {
+                // Overnight window, e.g. 23:00–07:00
+                windowStart = cal.date(bySettingHour: sleepStart, minute: 0, second: 0, of: dayCursor)!
+                windowEnd   = cal.date(bySettingHour: sleepEnd,   minute: 0, second: 0,
+                                       of: dayCursor.addingTimeInterval(86400))!
+            }
+
+            // Clamp to [start, end]
+            let overlapStart = max(windowStart, start)
+            let overlapEnd   = min(windowEnd, end)
+            if overlapStart < overlapEnd {
+                total += overlapEnd.timeIntervalSince(overlapStart)
+            }
+
+            dayCursor = dayCursor.addingTimeInterval(86400)
+        }
+        return total
     }
 
     // MARK: - Local Git
@@ -406,6 +788,16 @@ class GitTracker: ObservableObject {
 
     private func todayCommitCount(in repo: String) -> Int {
         let output = shell("git -C \"\(repo)\" log --since=midnight --oneline 2>/dev/null | wc -l")
+        return Int(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+    }
+
+    private func dirtyFileCount(in repo: String) -> Int {
+        let output = shell("git -C \"\(repo)\" status --porcelain 2>/dev/null | wc -l")
+        return Int(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+    }
+
+    private func unpushedCommitCount(in repo: String) -> Int {
+        let output = shell("git -C \"\(repo)\" log @{u}.. --oneline 2>/dev/null | wc -l")
         return Int(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     }
 

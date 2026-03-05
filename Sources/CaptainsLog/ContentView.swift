@@ -17,22 +17,71 @@ extension View {
     func card() -> some View { modifier(CardStyle()) }
 }
 
+// MARK: - Ship View Style
+
+enum ShipViewStyle: String, CaseIterable, Codable {
+    case classic, compact, grid, fleet
+
+    var label: String {
+        switch self {
+        case .classic: return L10n.viewClassic
+        case .compact: return L10n.viewCompact
+        case .grid:    return L10n.viewGrid
+        case .fleet:   return L10n.viewFleet
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .classic: return "list.bullet"
+        case .compact: return "list.dash"
+        case .grid:    return "square.grid.2x2"
+        case .fleet:   return "flag.2.crossed"
+        }
+    }
+}
+
+// MARK: - Navigation
+
+enum Screen {
+    case main, settings
+}
+
 // MARK: - Main View
 
 struct ContentView: View {
     @ObservedObject var tracker: GitTracker
     @State private var showAllRepos = false
+    @State private var screen: Screen = .main
+    @State private var draggingCard: CardType?
 
     var body: some View {
+        switch screen {
+        case .main:
+            mainView
+        case .settings:
+            SettingsView(tracker: tracker, screen: $screen)
+        }
+    }
+
+    private var mainView: some View {
         ScrollView {
             VStack(spacing: 12) {
                 header
                 animation
-                fleetCard
-                if tracker.githubConnected { githubCard }
-                shipsCard
-                settingsCard
-                quitRow
+                ForEach(tracker.cardOrder) { card in
+                    cardView(for: card)
+                        .opacity(draggingCard == card ? 0.4 : 1)
+                        .onDrag {
+                            draggingCard = card
+                            return NSItemProvider(object: card.rawValue as NSString)
+                        }
+                        .onDrop(of: [.text], delegate: CardDropDelegate(
+                            card: card,
+                            tracker: tracker,
+                            draggingCard: $draggingCard
+                        ))
+                }
             }
             .padding(14)
         }
@@ -45,7 +94,7 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.appTitle)
+                Text(tracker.captainName.isEmpty ? L10n.appTitle : "\(tracker.displayName)'s Log")
                     .font(.system(size: 13, weight: .semibold))
                 HStack(spacing: 4) {
                     Image(systemName: rankIcon)
@@ -56,7 +105,7 @@ struct ContentView: View {
                         .foregroundColor(rankColor)
                     Text("·")
                         .foregroundColor(.secondary.opacity(0.4))
-                    Text("\(Int(tracker.waterLevel))% \(L10n.water)")
+                    Text("\(tracker.weather.emoji) \(tracker.weather.label)")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -68,14 +117,263 @@ struct ContentView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
                 .background(Capsule().fill(Color.primary.opacity(0.05)))
+
+            Button { screen = .settings } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
+            .buttonStyle(.plain)
         }
     }
 
     // MARK: - Animation
 
     private var animation: some View {
-        WaterAnimationView(waterLevel: tracker.waterLevel, rank: tracker.rank)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+        WaterAnimationView(
+            waterLevel: tracker.waterLevel,
+            rank: tracker.rank,
+            navigatorEnabled: tracker.navigatorEnabled,
+            totalDirtyFiles: tracker.totalDirtyFiles,
+            totalUnpushedCommits: tracker.totalUnpushedCommits
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - Card Router
+
+    @ViewBuilder
+    private func cardView(for card: CardType) -> some View {
+        switch card {
+        case .navigator:
+            if tracker.navigatorEnabled { navigatorCard }
+        case .fleet:
+            fleetCard
+        case .ships:
+            shipsCard
+        case .coffee:
+            coffeeButton
+        }
+    }
+
+    // MARK: - Navigator Card
+
+    private var navigatorCard: some View {
+        let hullPercent = max(0, 100 - Int(tracker.waterLevel))
+
+        return VStack(alignment: .leading, spacing: 10) {
+            // Header: title + streak badge
+            HStack {
+                Label(L10n.navigator, systemImage: "safari.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if tracker.commitStreak > 0 {
+                    HStack(spacing: 3) {
+                        Text("\u{1F525}")
+                            .font(.system(size: 10))
+                        Text(L10n.dSailing(tracker.commitStreak))
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.orange.opacity(0.12)))
+                }
+            }
+
+            // Sea Condition
+            if tracker.showWeather {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(L10n.seaCondition)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(tracker.weather.emoji) \(L10n.hullStatus(tracker.rank))")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(weatherColor)
+                        Text("\u{00B7}")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary.opacity(0.4))
+                        Text(tracker.inactivityStatus)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(weatherColor.opacity(0.8))
+                    }
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.primary.opacity(0.06))
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(weatherColor)
+                                .frame(width: geo.size.width * CGFloat(hullPercent) / 100)
+                        }
+                    }
+                    .frame(height: 6)
+                }
+            }
+
+            // Today's Voyage
+            if tracker.showVoyage {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(L10n.todayVoyage)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        if tracker.todayCommits >= 5 {
+                            Text(L10n.flagship)
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.yellow)
+                        } else {
+                            Text("\(tracker.todayCommits) / 5")
+                                .font(.system(size: 9, weight: .medium, design: .rounded))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        ForEach(0..<5, id: \.self) { i in
+                            Circle()
+                                .fill(i < tracker.todayCommits ? voyageDotColor(i) : Color.primary.opacity(0.08))
+                                .frame(width: 8, height: 8)
+                        }
+                        if tracker.todayCommits > 5 {
+                            Text("+\(tracker.todayCommits - 5)")
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .foregroundColor(.yellow)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+
+            // Voyage Chart
+            if tracker.showChart {
+                voyageChartSection
+            }
+
+            // Treasure Status
+            if tracker.showTreasure {
+                Divider()
+                HStack(spacing: 10) {
+                    if tracker.totalDirtyFiles == 0 && tracker.totalUnpushedCommits == 0 {
+                        Text("\u{1F3DD}\u{FE0F} \(L10n.allStashed)")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.green)
+                    } else {
+                        if tracker.totalDirtyFiles > 0 {
+                            HStack(spacing: 2) {
+                                Text("\u{1F48E}")
+                                    .font(.system(size: 10))
+                                Text("\(tracker.totalDirtyFiles) \(L10n.dug)")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        if tracker.totalUnpushedCommits > 0 {
+                            HStack(spacing: 2) {
+                                Text("\u{1F4E6}")
+                                    .font(.system(size: 10))
+                                Text("\(tracker.totalUnpushedCommits) \(L10n.stowed)")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.cyan)
+                            }
+                        }
+                    }
+                    Spacer()
+                }
+            }
+        }
+        .card()
+    }
+
+    private var weatherColor: Color {
+        switch tracker.weather {
+        case .clear:     return .green
+        case .cloudy:    return .cyan
+        case .rainy:     return .yellow
+        case .stormy:    return .orange
+        case .hurricane: return .red
+        }
+    }
+
+    private func voyageDotColor(_ index: Int) -> Color {
+        if tracker.todayCommits >= 5 { return .yellow }
+        return .cyan
+    }
+
+    // MARK: - Voyage Chart Section (inside Navigator)
+
+    private var voyageChartSection: some View {
+        let data = tracker.voyageData.isEmpty ? tracker.weeklyCommits : tracker.voyageData
+        let days = data.count
+
+        return VStack(alignment: .leading, spacing: 6) {
+            Divider()
+
+            // Range selector
+            HStack(spacing: 0) {
+                Text(L10n.voyageLog)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                ForEach(VoyageRange.allCases, id: \.self) { range in
+                    Button {
+                        tracker.fetchVoyageData(range: range)
+                    } label: {
+                        Text(range.label)
+                            .font(.system(size: 8, weight: tracker.voyageRange == range ? .bold : .medium))
+                            .foregroundColor(tracker.voyageRange == range ? .white : .secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(tracker.voyageRange == range ? Color.accentColor : Color.clear)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if data.allSatisfy({ $0 == 0 }) {
+                Text(L10n.noVoyage)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.5))
+            } else {
+                let maxCommit = max(data.max() ?? 1, 1)
+                let bars = voyageBars(data: data, days: days)
+                let isHourly = tracker.voyageRange == .day
+
+                HStack(alignment: .bottom, spacing: isHourly ? 1 : (days <= 7 ? 6 : 2)) {
+                    ForEach(Array(bars.enumerated()), id: \.offset) { idx, bar in
+                        let barHeight: CGFloat = bar.count > 0
+                            ? max(4, CGFloat(bar.count) / CGFloat(maxCommit) * 48)
+                            : 2
+
+                        VStack(spacing: 2) {
+                            if bar.count > 0 && bars.count <= 7 {
+                                Text("\(bar.count)")
+                                    .font(.system(size: 7, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(voyageBarColor(bar.count))
+                                .frame(height: barHeight)
+
+                            if bar.showLabel {
+                                Text(bar.label)
+                                    .font(.system(size: 6, weight: .medium))
+                                    .foregroundColor(.secondary.opacity(0.6))
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(height: 72)
+            }
+        }
     }
 
     // MARK: - Fleet Status Card
@@ -121,53 +419,64 @@ struct ContentView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - GitHub Card
+    private struct VoyageBar {
+        let count: Int
+        let label: String
+        let showLabel: Bool
+    }
 
-    private var githubCard: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 14))
-                .foregroundColor(.secondary.opacity(0.5))
+    private func voyageBars(data: [Int], days: Int) -> [VoyageBar] {
+        let cal = Calendar.current
+        let isHourly = tracker.voyageRange == .day
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(tracker.githubUsername)
-                    .font(.system(size: 11, weight: .medium))
-                Text(tracker.timeSinceLastPush)
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+        if isHourly {
+            // 24-hour view: show each hour, label every 6h
+            return data.enumerated().map { hour, count in
+                let showLabel = hour % 6 == 0 || hour == 23
+                let label = showLabel ? String(format: "%02d", hour) : ""
+                return VoyageBar(count: count, label: label, showLabel: showLabel)
             }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 1) {
-                Text("\(tracker.githubTodayPushes)")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                Text(L10n.pushes)
-                    .font(.system(size: 8))
-                    .foregroundColor(.secondary)
+        } else if days <= 7 {
+            return data.enumerated().map { i, count in
+                let daysAgo = (days - 1) - i
+                let date = cal.date(byAdding: .day, value: -daysAgo, to: Date())!
+                let weekday = cal.component(.weekday, from: date)
+                return VoyageBar(count: count, label: L10n.dayAbbrev(weekday), showLabel: true)
             }
-
-            VStack(alignment: .trailing, spacing: 1) {
-                Text("\(tracker.todayCommits)")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                Text(L10n.local)
-                    .font(.system(size: 8))
-                    .foregroundColor(.secondary)
+        } else if days <= 30 {
+            return data.enumerated().map { i, count in
+                let daysAgo = (days - 1) - i
+                let date = cal.date(byAdding: .day, value: -daysAgo, to: Date())!
+                let day = cal.component(.day, from: date)
+                let showLabel = i == 0 || i == days - 1 || i % 7 == 0
+                return VoyageBar(count: count, label: showLabel ? "\(day)" : "", showLabel: showLabel)
             }
-
-            Toggle("", isOn: Binding(
-                get: { tracker.githubEnabled },
-                set: {
-                    tracker.githubEnabled = $0
-                    tracker.saveConfig()
-                    tracker.refresh()
-                }
-            ))
-            .toggleStyle(.switch)
-            .scaleEffect(0.55)
-            .frame(width: 36)
+        } else {
+            let weeksCount = (days + 6) / 7
+            var weeks: [VoyageBar] = []
+            for w in 0..<weeksCount {
+                let start = w * 7
+                let end = min(start + 7, days)
+                let sum = data[start..<end].reduce(0, +)
+                let daysAgo = (days - 1) - start
+                let date = cal.date(byAdding: .day, value: -daysAgo, to: Date())!
+                let month = cal.component(.month, from: date)
+                let showLabel = w == 0 || w == weeksCount - 1 || w % 4 == 0
+                let monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                let label = showLabel ? monthNames[month] : ""
+                weeks.append(VoyageBar(count: sum, label: label, showLabel: showLabel))
+            }
+            return weeks
         }
-        .card()
+    }
+
+    private func voyageBarColor(_ count: Int) -> Color {
+        switch count {
+        case 0:     return .gray.opacity(0.2)
+        case 1...2: return .cyan
+        case 3...4: return .green
+        default:    return .yellow
+        }
     }
 
     // MARK: - Ships Card
@@ -205,13 +514,26 @@ struct ContentView: View {
             } else {
                 let displayed = showAllRepos ? tracker.repos : Array(tracker.repos.prefix(8))
 
-                VStack(spacing: 0) {
-                    ForEach(Array(displayed.enumerated()), id: \.element.id) { index, repo in
-                        if index > 0 {
-                            Divider().padding(.leading, 24)
+                switch tracker.shipViewStyle {
+                case .classic:
+                    VStack(spacing: 0) {
+                        ForEach(Array(displayed.enumerated()), id: \.element.id) { index, repo in
+                            if index > 0 {
+                                Divider().padding(.leading, 24)
+                            }
+                            shipRow(repo)
                         }
-                        shipRow(repo)
                     }
+                case .compact:
+                    compactShipList(displayed)
+                case .grid:
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
+                        ForEach(displayed) { repo in
+                            gridShipCell(repo)
+                        }
+                    }
+                case .fleet:
+                    fleetShipView(displayed)
                 }
 
                 if tracker.repos.count > 8 {
@@ -248,6 +570,8 @@ struct ContentView: View {
 
             Spacer()
 
+            dirtyIndicators(repo)
+
             Text(repo.lastCommitText)
                 .font(.system(size: 9))
                 .foregroundColor(.secondary.opacity(0.5))
@@ -274,47 +598,183 @@ struct ContentView: View {
         .padding(.vertical, 5)
     }
 
-    // MARK: - Settings Card
+    // MARK: - Compact View (horizontal chip rows by type)
 
-    private var settingsCard: some View {
-        HStack(spacing: 8) {
-            Label(L10n.language, systemImage: "globe")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Picker("", selection: Binding(
-                get: { L10n.lang },
-                set: { newLang in
-                    L10n.lang = newLang
-                    tracker.saveConfig()
-                    tracker.objectWillChange.send()
-                }
-            )) {
-                ForEach(Language.allCases, id: \.self) { lang in
-                    Text("\(lang.flag) \(lang.displayName)").tag(lang)
+    private func compactShipList(_ repos: [RepoInfo]) -> some View {
+        let grouped: [(ShipType, [RepoInfo])] = ShipType.allTypes.compactMap { type in
+            let items = repos.filter { $0.shipType == type }
+            return items.isEmpty ? nil : (type, items)
+        }
+        return VStack(alignment: .leading, spacing: 6) {
+            ForEach(grouped, id: \.0) { type, items in
+                HStack(spacing: 4) {
+                    Text(type.emoji)
+                        .font(.system(size: 10))
+                    ForEach(items) { repo in
+                        HStack(spacing: 2) {
+                            Text(repo.name)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(repo.shipType == .shipwreck ? .secondary.opacity(0.5) : .primary)
+                                .lineLimit(1)
+                            if tracker.navigatorEnabled {
+                                if repo.dirtyFiles > 0 {
+                                    Circle().fill(Color.orange).frame(width: 4, height: 4)
+                                }
+                                if repo.unpushedCommits > 0 {
+                                    Circle().fill(Color.cyan).frame(width: 4, height: 4)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(shipDotColor(type).opacity(0.12)))
+                    }
                 }
             }
-            .pickerStyle(.menu)
-            .frame(width: 130)
         }
-        .card()
     }
 
-    // MARK: - Footer
+    // MARK: - Grid View (2-col cards with color accent)
 
-    private var quitRow: some View {
-        HStack {
-            Spacer()
-            Button("\(L10n.quit) \(L10n.appTitle)") {
-                NSApplication.shared.terminate(nil)
+    private func gridShipCell(_ repo: RepoInfo) -> some View {
+        let color = shipDotColor(repo.shipType)
+        return VStack(spacing: 3) {
+            HStack(spacing: 0) {
+                Spacer()
+                Text(repo.shipType.emoji)
+                    .font(.system(size: 22))
+                Spacer()
             }
-            .font(.system(size: 10))
-            .foregroundColor(.secondary.opacity(0.5))
-            .buttonStyle(.plain)
-            Spacer()
+            Text(repo.name)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(repo.shipType == .shipwreck ? .secondary.opacity(0.4) : .primary)
+                .lineLimit(1)
+            HStack(spacing: 4) {
+                dirtyIndicators(repo)
+                Text(repo.lastCommitText)
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary.opacity(0.5))
+                if repo.todayCommits > 0 {
+                    Text("\(repo.todayCommits)")
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(color))
+                }
+            }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(color.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(color.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Fleet View (grouped by ship type with headers)
+
+    private func fleetShipView(_ repos: [RepoInfo]) -> some View {
+        let grouped: [(ShipType, [RepoInfo])] = ShipType.allTypes.compactMap { type in
+            let items = repos.filter { $0.shipType == type }
+            return items.isEmpty ? nil : (type, items)
+        }
+        return VStack(alignment: .leading, spacing: 10) {
+            ForEach(grouped, id: \.0) { type, items in
+                VStack(alignment: .leading, spacing: 4) {
+                    // Section header
+                    HStack(spacing: 4) {
+                        Text(type.emoji)
+                            .font(.system(size: 11))
+                        Text(type.label)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(shipDotColor(type))
+                        Text("(\(items.count))")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        Spacer()
+                        Text(type.description)
+                            .font(.system(size: 8))
+                            .foregroundColor(.secondary.opacity(0.4))
+                    }
+
+                    // Ships in this group
+                    ForEach(items) { repo in
+                        HStack(spacing: 6) {
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(shipDotColor(type))
+                                .frame(width: 3, height: 18)
+                            dirtyIndicators(repo)
+                            Text(repo.name)
+                                .font(.system(size: 10))
+                                .foregroundColor(type == .shipwreck ? .secondary.opacity(0.4) : .primary)
+                                .lineLimit(1)
+                            Spacer()
+                            if repo.todayCommits > 0 {
+                                Text("\(repo.todayCommits)")
+                                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Capsule().fill(shipDotColor(type)))
+                            }
+                            Text(repo.lastCommitText)
+                                .font(.system(size: 8))
+                                .foregroundColor(.secondary.opacity(0.5))
+                        }
+                        .padding(.leading, 4)
+                    }
+                }
+                .padding(6)
+                .background(RoundedRectangle(cornerRadius: 6).fill(shipDotColor(type).opacity(0.04)))
+            }
+        }
+    }
+
+    // MARK: - Navigator Dirty Indicators
+
+    @ViewBuilder
+    private func dirtyIndicators(_ repo: RepoInfo) -> some View {
+        if tracker.navigatorEnabled && (repo.dirtyFiles > 0 || repo.unpushedCommits > 0) {
+            HStack(spacing: 3) {
+                if repo.dirtyFiles > 0 {
+                    Text("\u{1F48E}\(repo.dirtyFiles)")
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
+                        .foregroundColor(.orange)
+                }
+                if repo.unpushedCommits > 0 {
+                    Text("\u{1F4E6}\(repo.unpushedCommits)")
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
+                        .foregroundColor(.cyan)
+                }
+            }
+        }
+    }
+
+    // MARK: - Support
+
+    private var coffeeButton: some View {
+        Button {
+            if let url = URL(string: "https://www.buymeacoffee.com/lucas.ghae") {
+                NSWorkspace.shared.open(url)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text("\u{2615}")
+                    .font(.system(size: 13))
+                Text("Buy me a coffee")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.6))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Colors
@@ -357,5 +817,404 @@ struct ContentView: View {
         case ..<75:  return .orange
         default:     return .red
         }
+    }
+}
+
+// MARK: - Settings View
+
+struct SettingsView: View {
+    @ObservedObject var tracker: GitTracker
+    @Binding var screen: Screen
+
+    // Mon(2)..Sun(1) display order → Apple weekday values
+    private static let dayOrder: [Int] = [2, 3, 4, 5, 6, 7, 1]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                settingsHeader
+                generalSection
+                featuresSection
+                sleepSection
+                footerSection
+            }
+            .padding(14)
+        }
+        .frame(width: 320)
+        .frame(maxHeight: 640)
+    }
+
+    private var settingsHeader: some View {
+        HStack {
+            Button { screen = .main } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(L10n.settings)
+                        .font(.system(size: 13, weight: .semibold))
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.primary)
+            Spacer()
+        }
+    }
+
+    // MARK: - General
+
+    private var generalSection: some View {
+        VStack(spacing: 0) {
+            sectionHeader(L10n.general, icon: "gearshape")
+
+            // Captain Name
+            settingsRow {
+                Label(L10n.captainName, systemImage: "person.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                TextField(L10n.captainNamePlaceholder, text: Binding(
+                    get: { tracker.captainName },
+                    set: {
+                        tracker.captainName = $0
+                        tracker.saveConfig()
+                    }
+                ))
+                .font(.system(size: 11))
+                .textFieldStyle(.plain)
+                .frame(width: 120)
+                .multilineTextAlignment(.trailing)
+            }
+
+            Divider().padding(.leading, 28)
+
+            // Language
+            settingsRow {
+                Label(L10n.language, systemImage: "globe")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { L10n.lang },
+                    set: { newLang in
+                        L10n.lang = newLang
+                        tracker.saveConfig()
+                        tracker.objectWillChange.send()
+                    }
+                )) {
+                    ForEach(Language.allCases, id: \.self) { lang in
+                        Text("\(lang.flag) \(lang.displayName)").tag(lang)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 130)
+            }
+
+            Divider().padding(.leading, 28)
+
+            // Ship View
+            settingsRow {
+                Label(L10n.shipView, systemImage: "square.grid.2x2")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { tracker.shipViewStyle },
+                    set: { newStyle in
+                        tracker.shipViewStyle = newStyle
+                        tracker.saveConfig()
+                        tracker.objectWillChange.send()
+                    }
+                )) {
+                    ForEach(ShipViewStyle.allCases, id: \.self) { style in
+                        Label(style.label, systemImage: style.icon).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 130)
+            }
+
+            Divider().padding(.leading, 28)
+
+            // Launch at Login
+            settingsRow {
+                Label(L10n.launchAtLogin, systemImage: "power")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { tracker.launchAtLogin },
+                    set: { tracker.setLaunchAtLogin($0) }
+                ))
+                .toggleStyle(.switch)
+                .scaleEffect(0.55)
+                .frame(width: 36)
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+    }
+
+    // MARK: - Features
+
+    private var featuresSection: some View {
+        VStack(spacing: 0) {
+            sectionHeader(L10n.features, icon: "sparkles")
+
+            // Navigator
+            settingsRow {
+                Label(L10n.navigator, systemImage: "safari.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { tracker.navigatorEnabled },
+                    set: {
+                        tracker.navigatorEnabled = $0
+                        tracker.saveConfig()
+                        tracker.refresh()
+                    }
+                ))
+                .toggleStyle(.switch)
+                .scaleEffect(0.55)
+                .frame(width: 36)
+            }
+
+            if tracker.navigatorEnabled {
+                navigatorToggle(L10n.seaCondition, icon: "cloud.sun.fill", binding: Binding(
+                    get: { tracker.showWeather },
+                    set: { tracker.showWeather = $0; tracker.saveConfig() }
+                ))
+                navigatorToggle(L10n.voyageLog, icon: "chart.bar.fill", binding: Binding(
+                    get: { tracker.showChart },
+                    set: { tracker.showChart = $0; tracker.saveConfig() }
+                ))
+                navigatorToggle(L10n.todayVoyage, icon: "flag.fill", binding: Binding(
+                    get: { tracker.showVoyage },
+                    set: { tracker.showVoyage = $0; tracker.saveConfig() }
+                ))
+                navigatorToggle(L10n.treasure, icon: "diamond.fill", binding: Binding(
+                    get: { tracker.showTreasure },
+                    set: { tracker.showTreasure = $0; tracker.saveConfig() }
+                ))
+            }
+
+            if tracker.githubConnected {
+                Divider().padding(.leading, 28)
+
+                // GitHub
+                settingsRow {
+                    Label(L10n.github, systemImage: "person.circle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(tracker.githubUsername)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.6))
+                    Toggle("", isOn: Binding(
+                        get: { tracker.githubEnabled },
+                        set: {
+                            tracker.githubEnabled = $0
+                            tracker.saveConfig()
+                            tracker.refresh()
+                        }
+                    ))
+                    .toggleStyle(.switch)
+                    .scaleEffect(0.55)
+                    .frame(width: 36)
+                }
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+    }
+
+    // MARK: - Sleep / Off Duty
+
+    private var sleepSection: some View {
+        VStack(spacing: 0) {
+            sectionHeader(L10n.sleepMode, icon: "anchor.circle.fill")
+
+            settingsRow {
+                Label(L10n.sleepMode, systemImage: "moon.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { tracker.sleepEnabled },
+                    set: {
+                        tracker.sleepEnabled = $0
+                        tracker.saveConfig()
+                        tracker.refresh()
+                    }
+                ))
+                .toggleStyle(.switch)
+                .scaleEffect(0.55)
+                .frame(width: 36)
+            }
+
+            if tracker.sleepEnabled {
+                Divider().padding(.leading, 28)
+
+                VStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        Text(L10n.sleepFrom)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Picker("", selection: Binding(
+                            get: { tracker.sleepStart },
+                            set: {
+                                tracker.sleepStart = $0
+                                tracker.saveConfig()
+                                tracker.refresh()
+                            }
+                        )) {
+                            ForEach(0..<24, id: \.self) { h in
+                                Text(L10n.sleepHour(h)).tag(h)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 82)
+
+                        Text(L10n.sleepTo)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Picker("", selection: Binding(
+                            get: { tracker.sleepEnd },
+                            set: {
+                                tracker.sleepEnd = $0
+                                tracker.saveConfig()
+                                tracker.refresh()
+                            }
+                        )) {
+                            ForEach(0..<24, id: \.self) { h in
+                                Text(L10n.sleepHour(h)).tag(h)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 82)
+                    }
+
+                    HStack(spacing: 4) {
+                        ForEach(Self.dayOrder, id: \.self) { weekday in
+                            let isActive = tracker.sleepDays.contains(weekday)
+                            Button {
+                                tracker.toggleSleepDay(weekday)
+                            } label: {
+                                Text(L10n.dayAbbrev(weekday))
+                                    .font(.system(size: 9, weight: .medium))
+                                    .frame(width: 32, height: 24)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .fill(isActive ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.04))
+                                    )
+                                    .foregroundColor(isActive ? .accentColor : .secondary.opacity(0.5))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+    }
+
+    // MARK: - Footer
+
+    private var footerSection: some View {
+        VStack(spacing: 6) {
+            Button {
+                if let url = URL(string: "https://www.buymeacoffee.com/lucas.ghae") {
+                    NSWorkspace.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("\u{2615}")
+                        .font(.system(size: 13))
+                    Text("Buy me a coffee")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+
+            Button("\(L10n.quit) \(L10n.appTitle)") {
+                NSApplication.shared.terminate(nil)
+            }
+            .font(.system(size: 10))
+            .foregroundColor(.secondary.opacity(0.5))
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func sectionHeader(_ title: String, icon: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9))
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+        }
+        .foregroundColor(.secondary.opacity(0.6))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    private func settingsRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 8) {
+            content()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+    }
+
+    private func navigatorToggle(_ label: String, icon: String, binding: Binding<Bool>) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 9))
+                .foregroundColor(.secondary.opacity(0.5))
+                .frame(width: 16)
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundColor(.secondary.opacity(0.7))
+            Spacer()
+            Toggle("", isOn: binding)
+                .toggleStyle(.switch)
+                .scaleEffect(0.5)
+                .frame(width: 32)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 3)
+    }
+}
+
+// MARK: - Card Drag & Drop
+
+struct CardDropDelegate: DropDelegate {
+    let card: CardType
+    let tracker: GitTracker
+    @Binding var draggingCard: CardType?
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingCard = nil
+        return true
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging = draggingCard, dragging != card else { return }
+        guard let fromIndex = tracker.cardOrder.firstIndex(of: dragging),
+              let toIndex = tracker.cardOrder.firstIndex(of: card) else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            tracker.cardOrder.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+        }
+        tracker.saveConfig()
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
     }
 }

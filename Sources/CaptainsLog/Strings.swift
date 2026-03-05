@@ -168,6 +168,19 @@ enum L10n {
           "\(sailing)/\(total) unterwegs")
     }
 
+    // MARK: Weather
+    static func weatherLabel(_ w: Weather) -> String {
+        switch w {
+        case .clear:     return s("Clear Skies", "맑은 하늘", "快晴", "晴朗", "Cielo Despejado", "Ciel Dégagé", "Klarer Himmel")
+        case .cloudy:    return s("Partly Cloudy", "구름 조금", "曇り", "多云", "Parcialmente Nublado", "Partiellement Nuageux", "Teilweise Bewölkt")
+        case .rainy:     return s("Rain & Wind", "비바람", "雨風", "风雨", "Lluvia y Viento", "Pluie et Vent", "Regen & Wind")
+        case .stormy:    return s("Storm!", "폭풍!", "嵐！", "暴风！", "¡Tormenta!", "Tempête !", "Sturm!")
+        case .hurricane: return s("Hurricane!", "태풍!", "台風！", "台风！", "¡Huracán!", "Ouragan !", "Hurrikan!")
+        }
+    }
+
+    static var seaCondition: String { s("Sea Condition", "해상 상태", "海況", "海况", "Estado del Mar", "État de la Mer", "Seezustand") }
+
     // MARK: UI Labels
     static var water: String { s("water", "침수", "浸水", "进水", "agua", "eau", "Wasser") }
     static var pushes: String { s("pushes", "푸시", "プッシュ", "推送", "pushes", "pushes", "Pushes") }
@@ -189,6 +202,51 @@ enum L10n {
         "Wähle deine Repos!"
     )}
     static var language: String { s("Language", "언어", "言語", "语言", "Idioma", "Langue", "Sprache") }
+
+    // MARK: Settings
+    static var settings: String { s("Settings", "설정", "設定", "设置", "Ajustes", "Paramètres", "Einstellungen") }
+    static var launchAtLogin: String { s("Launch at Login", "로그인 시 시작", "ログイン時に起動", "登录时启动", "Iniciar al Login", "Lancer au Démarrage", "Beim Login starten") }
+    static var captainName: String { s("Captain Name", "선장 이름", "船長名", "船长名", "Nombre", "Nom", "Name") }
+    static var captainNamePlaceholder: String { s("Enter your name", "이름을 입력하세요", "名前を入力", "输入名字", "Tu nombre", "Ton nom", "Dein Name") }
+    static var general: String { s("General", "일반", "一般", "通用", "General", "Général", "Allgemein") }
+    static var features: String { s("Features", "기능", "機能", "功能", "Funciones", "Fonctions", "Funktionen") }
+    static var github: String { s("GitHub", "GitHub", "GitHub", "GitHub", "GitHub", "GitHub", "GitHub") }
+
+    // MARK: Ship View
+    static var shipView: String { s("Ship View", "선박 보기", "船表示", "船只视图", "Vista de Barcos", "Vue des Navires", "Schiffansicht") }
+    static var viewClassic: String { s("Classic", "클래식", "クラシック", "经典", "Clásico", "Classique", "Klassisch") }
+    static var viewCompact: String { s("Compact", "컴팩트", "コンパクト", "紧凑", "Compacto", "Compact", "Kompakt") }
+    static var viewGrid: String { s("Grid", "그리드", "グリッド", "网格", "Cuadrícula", "Grille", "Raster") }
+    static var viewFleet: String { s("Fleet", "편대", "編隊", "编队", "Escuadra", "Escadre", "Geschwader") }
+
+    // MARK: Navigator (보물 사냥)
+    static var navigator: String { s("Navigator", "항해사", "ナビゲーター", "领航员", "Navegante", "Navigateur", "Navigator") }
+    static var dug: String { s("dug", "발굴", "発掘", "挖掘", "excavado", "excavé", "gegraben") }
+    static var stowed: String { s("stowed", "적재", "積載", "装载", "estibado", "arrimé", "verstaut") }
+    static var allStashed: String { s("All stashed!", "은닉 완료!", "全て隠した！", "全部藏好了！", "¡Todo escondido!", "Tout planqué !", "Alles versteckt!") }
+
+    // MARK: Off Duty (비운항 시간)
+    static var sleepMode: String { s("Off Duty", "비운항 시간", "停泊時間", "停泊时间", "Fuera de Servicio", "Hors Service", "Dienstfrei") }
+    static var sleepDays: String { s("Active Days", "적용 요일", "適用曜日", "适用日", "Días Activos", "Jours Actifs", "Aktive Tage") }
+
+    static func dayAbbrev(_ weekday: Int) -> String {
+        switch weekday {
+        case 1: return s("Sun", "일", "日", "日", "Dom", "Dim", "So")
+        case 2: return s("Mon", "월", "月", "一", "Lun", "Lun", "Mo")
+        case 3: return s("Tue", "화", "火", "二", "Mar", "Mar", "Di")
+        case 4: return s("Wed", "수", "水", "三", "Mié", "Mer", "Mi")
+        case 5: return s("Thu", "목", "木", "四", "Jue", "Jeu", "Do")
+        case 6: return s("Fri", "금", "金", "五", "Vie", "Ven", "Fr")
+        case 7: return s("Sat", "토", "土", "六", "Sáb", "Sam", "Sa")
+        default: return ""
+        }
+    }
+    static var sleepFrom: String { s("From", "시작", "開始", "开始", "Desde", "De", "Von") }
+    static var sleepTo: String { s("To", "종료", "終了", "结束", "Hasta", "À", "Bis") }
+    static func sleepHour(_ h: Int) -> String {
+        let formatted = String(format: "%02d:00", h)
+        return formatted
+    }
 
     // MARK: Time
     static var justNow: String { s("Just now", "방금", "たった今", "刚刚", "Ahora", "À l'instant", "Gerade") }
@@ -368,6 +426,45 @@ enum L10n {
         }
     }
 
+    // MARK: Navigator v2 — Hull & Voyage
+    static func hullStatus(_ rank: PirateRank) -> String {
+        switch rank {
+        case .captain:   return s("Perfect sailing!", "최고의 항해!", "最高の航海！", "完美航行！", "¡Navegación perfecta!", "Navigation parfaite !", "Perfekte Fahrt!")
+        case .firstMate: return s("Fair winds", "순풍", "順風", "顺风", "Buen viento", "Bon vent", "Guter Wind")
+        case .deckhand:  return s("Getting rough!", "거칠어진다!", "荒れてきた！", "变得粗暴！", "¡Se pone difícil!", "Ça se complique !", "Wird rau!")
+        case .castaway:  return s("Mayday!", "조난 신호!", "メーデー！", "求救信号！", "¡Mayday!", "Mayday !", "Mayday!")
+        case .davyJones: return s("Commit to resurrect!", "커밋으로 부활!", "コミットで復活！", "提交即复活！", "¡Commitea para revivir!", "Commite pour revivre !", "Committe zum Wiederbeleben!")
+        }
+    }
+
+    static func dSailing(_ days: Int) -> String {
+        s("\(days)d sailing",
+          "\(days)일 항해",
+          "\(days)日航海",
+          "\(days)天航海",
+          "\(days)d navegando",
+          "\(days)j en mer",
+          "\(days)T Fahrt")
+    }
+
+    static var hullIntegrity: String { s("Hull Integrity", "선체 건강도", "船体耐久度", "船体耐久", "Integridad", "Intégrité", "Hüllenstärke") }
+
+    static func anchoredTime(_ time: String) -> String {
+        s("\u{2693} \(time) calm", "\u{2693} \(time) 잔잔", "\u{2693} \(time) 穏やか", "\u{2693} \(time) 平静", "\u{2693} \(time) calma", "\u{2693} \(time) calme", "\u{2693} \(time) ruhig")
+    }
+    static func driftingTime(_ time: String) -> String {
+        s("\u{1F327}\u{FE0F} \(time) rain", "\u{1F327}\u{FE0F} \(time) 비바람", "\u{1F327}\u{FE0F} \(time) 雨", "\u{1F327}\u{FE0F} \(time) 雨", "\u{1F327}\u{FE0F} \(time) lluvia", "\u{1F327}\u{FE0F} \(time) pluie", "\u{1F327}\u{FE0F} \(time) Regen")
+    }
+    static func floodingTime(_ time: String) -> String {
+        s("\u{26C8}\u{FE0F} \(time) storm", "\u{26C8}\u{FE0F} \(time) 폭풍", "\u{26C8}\u{FE0F} \(time) 嵐", "\u{26C8}\u{FE0F} \(time) 暴风", "\u{26C8}\u{FE0F} \(time) tormenta", "\u{26C8}\u{FE0F} \(time) tempête", "\u{26C8}\u{FE0F} \(time) Sturm")
+    }
+    static func sunkTime(_ time: String) -> String {
+        s("\u{1F300} \(time)+ hurricane", "\u{1F300} \(time)+ 태풍", "\u{1F300} \(time)+ 台風", "\u{1F300} \(time)+ 台风", "\u{1F300} \(time)+ huracán", "\u{1F300} \(time)+ ouragan", "\u{1F300} \(time)+ Hurrikan")
+    }
+    static var todayVoyage: String { s("Today's Voyage", "오늘 항해", "今日の航海", "今日航行", "Viaje de Hoy", "Voyage du Jour", "Heutige Fahrt") }
+    static var flagship: String { s("Flagship!", "기함 달성!", "旗艦達成！", "旗舰达成！", "¡Insignia!", "Amiral !", "Flaggschiff!") }
+    static var treasure: String { s("Treasure", "보물", "宝物", "宝藏", "Tesoro", "Trésor", "Schatz") }
+
     // MARK: Death Screen
     static var davyJonersLocker: String { s(
         "DAVY JONES' LOCKER",
@@ -387,6 +484,24 @@ enum L10n {
         "Commite pour Revivre",
         "Committe zum Wiederbeleben"
     )}
+
+    // MARK: Voyage Log
+    static var voyageLog: String { s("Voyage Log", "항해 일지", "航海日誌", "航海日志", "Diario de Viaje", "Journal de Voyage", "Fahrtenbuch") }
+    static func sailing(_ days: Int) -> String {
+        s("⚓ \(days)d sailing",
+          "⚓ \(days)일 연속 항해",
+          "⚓ \(days)日連続航海",
+          "⚓ 连续航行\(days)天",
+          "⚓ \(days)d navegando",
+          "⚓ \(days)j en mer",
+          "⚓ \(days)T unterwegs")
+    }
+    static var noVoyage: String { s("No voyages yet", "아직 항해 기록 없음", "航海記録なし", "暂无航海记录", "Sin viajes aún", "Pas encore de voyages", "Noch keine Fahrten") }
+    static var range1d: String { s("1D", "1일", "1日", "1天", "1D", "1J", "1T") }
+    static var range3d: String { s("3D", "3일", "3日", "3天", "3D", "3J", "3T") }
+    static var range7d: String { s("7D", "7일", "7日", "7天", "7D", "7J", "7T") }
+    static var range30d: String { s("30D", "30일", "30日", "30天", "30D", "30J", "30T") }
+    static var range1y: String { s("1Y", "1년", "1年", "1年", "1A", "1A", "1J") }
 
     // MARK: - Helper
 

@@ -60,11 +60,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if let button = self.statusItem.button {
                 button.title = self.gitTracker.menuBarDisplay
             }
-            // Check for rank changes → send notifications
-            NotificationManager.shared.checkRankChange(
-                newRank: self.gitTracker.rank,
-                waterLevel: self.gitTracker.waterLevel
-            )
+            // Check for rank changes → send notifications (skip during off-duty hours)
+            if !self.gitTracker.isInSleepWindow {
+                NotificationManager.shared.checkRankChange(
+                    newRank: self.gitTracker.rank,
+                    waterLevel: self.gitTracker.waterLevel,
+                    captainName: self.gitTracker.captainName
+                )
+            }
         }
     }
 }
