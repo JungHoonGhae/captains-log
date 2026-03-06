@@ -71,6 +71,8 @@ struct RepoConfig: Codable {
     var showChart: Bool?
     var showVoyage: Bool?
     var showTreasure: Bool?
+    var showSpeechBubble: Bool?
+    var dailyGoal: Int?
 }
 
 enum PirateRank: String {
@@ -142,6 +144,7 @@ struct RepoInfo: Identifiable {
     var todayCommits: Int = 0
     var dirtyFiles: Int = 0
     var unpushedCommits: Int = 0
+    var flagshipGoal: Int = 5
 
     var id: String { path }
     var name: String { (path as NSString).lastPathComponent }
@@ -149,7 +152,7 @@ struct RepoInfo: Identifiable {
     var shipType: ShipType {
         guard let last = lastCommit else { return .shipwreck }
         let hours = Date().timeIntervalSince(last) / 3600
-        if todayCommits >= 5 { return .flagship }
+        if todayCommits >= flagshipGoal { return .flagship }
         if hours < 24 { return .warship }
         if hours < 72 { return .galleon }
         if hours < 168 { return .sloop }
@@ -189,7 +192,7 @@ class GitTracker: ObservableObject {
 
     // Voyage history (for arbitrary ranges)
     @Published var voyageData: [Int] = []
-    @Published var voyageRange: VoyageRange = .day
+    @Published var voyageRange: VoyageRange = .week
 
     // GitHub
     @Published var githubEnabled: Bool = false
@@ -205,6 +208,7 @@ class GitTracker: ObservableObject {
     @Published var navigatorEnabled: Bool = true
     @Published var totalDirtyFiles: Int = 0
     @Published var totalUnpushedCommits: Int = 0
+    @Published var todayPushes: Int = 0
 
     // Captain name
     @Published var captainName: String = ""
@@ -220,6 +224,10 @@ class GitTracker: ObservableObject {
     @Published var showChart: Bool = true
     @Published var showVoyage: Bool = true
     @Published var showTreasure: Bool = true
+    @Published var showSpeechBubble: Bool = true
+
+    // Daily commit goal
+    @Published var dailyGoal: Int = 5
 
     // Sleep mode
     @Published var sleepEnabled: Bool = false
@@ -286,7 +294,7 @@ class GitTracker: ObservableObject {
         }
     }
 
-    var voyageProgress: Int { min(todayCommits, 5) }
+    var voyageProgress: Int { min(todayCommits, dailyGoal) }
 
     var inactivityStatus: String {
         guard let last = lastActivity else {
@@ -385,10 +393,12 @@ class GitTracker: ObservableObject {
         showChart = config.showChart ?? true
         showVoyage = config.showVoyage ?? true
         showTreasure = config.showTreasure ?? true
+        showSpeechBubble = config.showSpeechBubble ?? true
+        dailyGoal = config.dailyGoal ?? 5
     }
 
     func saveConfig() {
-        let config = RepoConfig(repos: repoPaths, githubEnabled: githubEnabled, hasScannedOnce: hasScannedOnce, language: L10n.lang.rawValue, sleepEnabled: sleepEnabled, sleepStart: sleepStart, sleepEnd: sleepEnd, sleepDays: Array(sleepDays).sorted(), shipViewStyle: shipViewStyle.rawValue, navigatorEnabled: navigatorEnabled, captainName: captainName.isEmpty ? nil : captainName, cardOrder: cardOrder.map { $0.rawValue }, showWeather: showWeather, showChart: showChart, showVoyage: showVoyage, showTreasure: showTreasure)
+        let config = RepoConfig(repos: repoPaths, githubEnabled: githubEnabled, hasScannedOnce: hasScannedOnce, language: L10n.lang.rawValue, sleepEnabled: sleepEnabled, sleepStart: sleepStart, sleepEnd: sleepEnd, sleepDays: Array(sleepDays).sorted(), shipViewStyle: shipViewStyle.rawValue, navigatorEnabled: navigatorEnabled, captainName: captainName.isEmpty ? nil : captainName, cardOrder: cardOrder.map { $0.rawValue }, showWeather: showWeather, showChart: showChart, showVoyage: showVoyage, showTreasure: showTreasure, showSpeechBubble: showSpeechBubble, dailyGoal: dailyGoal)
         guard let data = try? JSONEncoder().encode(config) else { return }
         try? data.write(to: URL(fileURLWithPath: Self.configPath))
     }
@@ -550,9 +560,10 @@ class GitTracker: ObservableObject {
 
             var sumDirty = 0
             var sumUnpushed = 0
+            var sumTodayPushes = 0
 
             for path in repoPaths {
-                var info = RepoInfo(path: path)
+                var info = RepoInfo(path: path, flagshipGoal: dailyGoal)
                 info.lastCommit = lastCommitDate(in: path)
                 info.todayCommits = todayCommitCount(in: path)
                 if navigatorEnabled {
@@ -560,6 +571,7 @@ class GitTracker: ObservableObject {
                     info.unpushedCommits = unpushedCommitCount(in: path)
                     sumDirty += info.dirtyFiles
                     sumUnpushed += info.unpushedCommits
+                    sumTodayPushes += todayPushedCommitCount(in: path)
                 }
                 repoInfos.append(info)
 
@@ -601,6 +613,7 @@ class GitTracker: ObservableObject {
                 self.waterLevel = self.calculateWaterLevel(lastActivity: mostRecent)
                 self.totalDirtyFiles = sumDirty
                 self.totalUnpushedCommits = sumUnpushed
+                self.todayPushes = sumTodayPushes
             }
         }
     }
@@ -798,6 +811,11 @@ class GitTracker: ObservableObject {
 
     private func unpushedCommitCount(in repo: String) -> Int {
         let output = shell("git -C \"\(repo)\" log @{u}.. --oneline 2>/dev/null | wc -l")
+        return Int(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+    }
+
+    private func todayPushedCommitCount(in repo: String) -> Int {
+        let output = shell("git -C \"\(repo)\" log @{u} --since=midnight --oneline 2>/dev/null | wc -l")
         return Int(output.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     }
 

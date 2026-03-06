@@ -135,7 +135,10 @@ struct ContentView: View {
             rank: tracker.rank,
             navigatorEnabled: tracker.navigatorEnabled,
             totalDirtyFiles: tracker.totalDirtyFiles,
-            totalUnpushedCommits: tracker.totalUnpushedCommits
+            totalUnpushedCommits: tracker.totalUnpushedCommits,
+            todayCommits: tracker.todayCommits,
+            todayPushes: tracker.todayPushes,
+            showSpeechBubble: tracker.showSpeechBubble
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -213,32 +216,32 @@ struct ContentView: View {
                 }
             }
 
-            // Today's Voyage
+            // Daily Goal
             if tracker.showVoyage {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(L10n.todayVoyage)
+                        Text(L10n.dailyGoal)
                             .font(.system(size: 9, weight: .medium))
                             .foregroundColor(.secondary)
                         Spacer()
-                        if tracker.todayCommits >= 5 {
+                        if tracker.todayCommits >= tracker.dailyGoal {
                             Text(L10n.flagship)
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundColor(.yellow)
                         } else {
-                            Text("\(tracker.todayCommits) / 5")
+                            Text("\(tracker.todayCommits) / \(tracker.dailyGoal)")
                                 .font(.system(size: 9, weight: .medium, design: .rounded))
                                 .foregroundColor(.secondary)
                         }
                     }
                     HStack(spacing: 6) {
-                        ForEach(0..<5, id: \.self) { i in
+                        ForEach(0..<tracker.dailyGoal, id: \.self) { i in
                             Circle()
                                 .fill(i < tracker.todayCommits ? voyageDotColor(i) : Color.primary.opacity(0.08))
-                                .frame(width: 8, height: 8)
+                                .frame(width: tracker.dailyGoal <= 10 ? 8 : 6, height: tracker.dailyGoal <= 10 ? 8 : 6)
                         }
-                        if tracker.todayCommits > 5 {
-                            Text("+\(tracker.todayCommits - 5)")
+                        if tracker.todayCommits > tracker.dailyGoal {
+                            Text("+\(tracker.todayCommits - tracker.dailyGoal)")
                                 .font(.system(size: 8, weight: .bold, design: .rounded))
                                 .foregroundColor(.yellow)
                         }
@@ -255,33 +258,7 @@ struct ContentView: View {
             // Treasure Status
             if tracker.showTreasure {
                 Divider()
-                HStack(spacing: 10) {
-                    if tracker.totalDirtyFiles == 0 && tracker.totalUnpushedCommits == 0 {
-                        Text("\u{1F3DD}\u{FE0F} \(L10n.allStashed)")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.green)
-                    } else {
-                        if tracker.totalDirtyFiles > 0 {
-                            HStack(spacing: 2) {
-                                Text("\u{1F48E}")
-                                    .font(.system(size: 10))
-                                Text("\(tracker.totalDirtyFiles) \(L10n.dug)")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                        if tracker.totalUnpushedCommits > 0 {
-                            HStack(spacing: 2) {
-                                Text("\u{1F4E6}")
-                                    .font(.system(size: 10))
-                                Text("\(tracker.totalUnpushedCommits) \(L10n.stowed)")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(.cyan)
-                            }
-                        }
-                    }
-                    Spacer()
-                }
+                PipelineView(dirtyFiles: tracker.totalDirtyFiles, todayCommits: tracker.todayCommits, todayPushes: tracker.todayPushes)
             }
         }
         .card()
@@ -298,7 +275,7 @@ struct ContentView: View {
     }
 
     private func voyageDotColor(_ index: Int) -> Color {
-        if tracker.todayCommits >= 5 { return .yellow }
+        if tracker.todayCommits >= tracker.dailyGoal { return .yellow }
         return .cyan
     }
 
@@ -935,6 +912,90 @@ struct SettingsView: View {
 
             Divider().padding(.leading, 28)
 
+            // Speech Bubble
+            settingsRow {
+                Label(L10n.speechBubble, systemImage: "bubble.left.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { tracker.showSpeechBubble },
+                    set: { tracker.showSpeechBubble = $0; tracker.saveConfig() }
+                ))
+                .toggleStyle(.switch)
+                .scaleEffect(0.55)
+                .frame(width: 36)
+            }
+
+            Divider().padding(.leading, 28)
+
+            // Daily Goal
+            settingsRow {
+                Label(L10n.dailyGoal, systemImage: "target")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                Spacer()
+                HStack(spacing: 6) {
+                    Button {
+                        if tracker.dailyGoal > 1 {
+                            tracker.dailyGoal -= 1
+                            tracker.saveConfig()
+                            tracker.refresh()
+                        }
+                    } label: {
+                        Image(systemName: "minus.circle")
+                            .font(.system(size: 12))
+                            .foregroundColor(tracker.dailyGoal > 1 ? .secondary : .secondary.opacity(0.2))
+                    }
+                    .buttonStyle(.plain)
+
+                    Text("\(tracker.dailyGoal) \(L10n.commits)")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .frame(minWidth: 55)
+
+                    Button {
+                        if tracker.dailyGoal < 20 {
+                            tracker.dailyGoal += 1
+                            tracker.saveConfig()
+                            tracker.refresh()
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .font(.system(size: 12))
+                            .foregroundColor(tracker.dailyGoal < 20 ? .secondary : .secondary.opacity(0.2))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if tracker.githubConnected {
+                Divider().padding(.leading, 28)
+
+                // GitHub
+                settingsRow {
+                    Label(L10n.github, systemImage: "person.circle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(tracker.githubUsername)
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Toggle("", isOn: Binding(
+                        get: { tracker.githubEnabled },
+                        set: {
+                            tracker.githubEnabled = $0
+                            tracker.saveConfig()
+                            tracker.refresh()
+                        }
+                    ))
+                    .toggleStyle(.switch)
+                    .scaleEffect(0.55)
+                    .frame(width: 36)
+                }
+            }
+
+            Divider().padding(.leading, 28)
+
             // Launch at Login
             settingsRow {
                 Label(L10n.launchAtLogin, systemImage: "power")
@@ -953,17 +1014,16 @@ struct SettingsView: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
     }
 
-    // MARK: - Features
+    // MARK: - Navigator
 
     private var featuresSection: some View {
         VStack(spacing: 0) {
-            sectionHeader(L10n.features, icon: "sparkles")
-
-            // Navigator
-            settingsRow {
-                Label(L10n.navigator, systemImage: "safari.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
+            // Navigator header with integrated toggle
+            HStack(spacing: 8) {
+                Image(systemName: "safari.fill")
+                    .font(.system(size: 9))
+                Text(L10n.navigator)
+                    .font(.system(size: 10, weight: .semibold))
                 Spacer()
                 Toggle("", isOn: Binding(
                     get: { tracker.navigatorEnabled },
@@ -977,50 +1037,28 @@ struct SettingsView: View {
                 .scaleEffect(0.55)
                 .frame(width: 36)
             }
+            .foregroundColor(.secondary.opacity(0.6))
+            .padding(.horizontal, 10)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
             if tracker.navigatorEnabled {
                 navigatorToggle(L10n.seaCondition, icon: "cloud.sun.fill", binding: Binding(
                     get: { tracker.showWeather },
                     set: { tracker.showWeather = $0; tracker.saveConfig() }
                 ))
+                navigatorToggle(L10n.dailyGoal, icon: "flag.fill", binding: Binding(
+                    get: { tracker.showVoyage },
+                    set: { tracker.showVoyage = $0; tracker.saveConfig() }
+                ))
                 navigatorToggle(L10n.voyageLog, icon: "chart.bar.fill", binding: Binding(
                     get: { tracker.showChart },
                     set: { tracker.showChart = $0; tracker.saveConfig() }
-                ))
-                navigatorToggle(L10n.todayVoyage, icon: "flag.fill", binding: Binding(
-                    get: { tracker.showVoyage },
-                    set: { tracker.showVoyage = $0; tracker.saveConfig() }
                 ))
                 navigatorToggle(L10n.treasure, icon: "diamond.fill", binding: Binding(
                     get: { tracker.showTreasure },
                     set: { tracker.showTreasure = $0; tracker.saveConfig() }
                 ))
-            }
-
-            if tracker.githubConnected {
-                Divider().padding(.leading, 28)
-
-                // GitHub
-                settingsRow {
-                    Label(L10n.github, systemImage: "person.circle.fill")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text(tracker.githubUsername)
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary.opacity(0.6))
-                    Toggle("", isOn: Binding(
-                        get: { tracker.githubEnabled },
-                        set: {
-                            tracker.githubEnabled = $0
-                            tracker.saveConfig()
-                            tracker.refresh()
-                        }
-                    ))
-                    .toggleStyle(.switch)
-                    .scaleEffect(0.55)
-                    .frame(width: 36)
-                }
             }
         }
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))

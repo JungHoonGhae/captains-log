@@ -40,6 +40,94 @@ private let coatRed = Color(red: 0.60, green: 0.12, blue: 0.10)
 private let coatDarkRed = Color(red: 0.42, green: 0.08, blue: 0.06)
 private let skinTone = Color(red: 0.88, green: 0.72, blue: 0.56)
 
+// MARK: - Shimmer Effect
+
+private struct ShimmerModifier: ViewModifier {
+    let active: Bool
+    let phase: CGFloat
+
+    func body(content: Content) -> some View {
+        content.overlay(
+            Group {
+                if active {
+                    GeometryReader { geo in
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .white.opacity(0.25), location: 0.5),
+                                .init(color: .clear, location: 1)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(width: geo.size.width * 0.4)
+                        .offset(x: geo.size.width * (phase * 1.5 - 0.2))
+                    }
+                    .clipped()
+                    .allowsHitTesting(false)
+                }
+            }
+        )
+    }
+}
+
+// MARK: - Pipeline View
+
+struct PipelineView: View {
+    let dirtyFiles: Int
+    let todayCommits: Int
+    let todayPushes: Int
+    var compact: Bool = false
+
+    @State private var shimmerPhase: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: compact ? 4 : 6) {
+            stage(emoji: "\u{1F48E}", count: dirtyFiles, label: L10n.dug,
+                  color: .orange, tooltip: L10n.tooltipDug, active: dirtyFiles > 0)
+            chevron
+            stage(emoji: "\u{1F4E6}", count: todayCommits, label: L10n.stowed,
+                  color: .cyan, tooltip: L10n.tooltipStowed, active: todayCommits > 0)
+            chevron
+            stage(emoji: "\u{1F3DD}\u{FE0F}", count: todayPushes, label: L10n.stashed,
+                  color: .green, tooltip: L10n.tooltipStashed, active: todayPushes > 0)
+        }
+        .onAppear {
+            guard compact else { return }
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                shimmerPhase = 1
+            }
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: compact ? 7 : 8, weight: .medium))
+            .foregroundColor(compact ? .white.opacity(0.3) : .secondary.opacity(0.4))
+    }
+
+    @ViewBuilder
+    private func stage(emoji: String, count: Int?, label: String, color: Color, tooltip: String, active: Bool) -> some View {
+        HStack(spacing: 2) {
+            Text(emoji)
+                .font(.system(size: compact ? 9 : 10))
+            if let count = count {
+                Text("\(count)")
+                    .font(.system(size: compact ? 9 : 10, weight: .bold, design: .rounded))
+                Text(label)
+                    .font(.system(size: compact ? 9 : 10, weight: .semibold))
+            } else {
+                Text(label)
+                    .font(.system(size: compact ? 9 : 10, weight: .semibold))
+            }
+        }
+        .foregroundColor(active ? color : (compact ? .white.opacity(0.3) : .secondary))
+        .opacity(active ? 1 : 0.4)
+        .modifier(ShimmerModifier(active: compact && active, phase: shimmerPhase))
+        .help(tooltip)
+    }
+}
+
 // MARK: - Main Animation View
 
 struct WaterAnimationView: View {
@@ -48,7 +136,11 @@ struct WaterAnimationView: View {
     var navigatorEnabled: Bool = false
     var totalDirtyFiles: Int = 0
     var totalUnpushedCommits: Int = 0
+    var todayCommits: Int = 0
+    var todayPushes: Int = 0
+    var showSpeechBubble: Bool = true
 
+    @State private var speechIndex: Int = 0
     private var level: CGFloat { 0.12 + min(CGFloat(waterLevel) / 100.0, 1.0) * 0.78 }
 
     var body: some View {
@@ -57,69 +149,110 @@ struct WaterAnimationView: View {
             ZStack {
                 sceneCanvas(time: t)
 
-                if waterLevel >= 100 {
-                    Color.black.opacity(0.55)
-                        .allowsHitTesting(false)
-                    VStack(spacing: 4) {
-                        Text(L10n.davyJonersLocker)
-                            .font(.system(size: 10, weight: .heavy))
-                            .tracking(3)
-                        Text(L10n.commitToResurrect)
-                            .font(.system(size: 11, weight: .semibold))
-                            .tracking(1)
-                    }
-                    .foregroundColor(.white.opacity(0.8))
-                }
-
-                if waterLevel > 85 {
+                if waterLevel > 85 && waterLevel < 100 {
                     let flash = sin(t * 4.3) * sin(t * 7.1)
                     Color.white
                         .opacity(flash > 0.92 ? 0.3 : 0)
                         .allowsHitTesting(false)
                 }
 
+                if waterLevel >= 100 {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .black.opacity(0.15), location: 0),
+                            .init(color: .black.opacity(0.5), location: 0.45),
+                            .init(color: .black.opacity(0.15), location: 1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .allowsHitTesting(false)
+
+                    let pulse = 0.85 + sin(t * 1.5) * 0.15
+                    VStack(spacing: 8) {
+                        Text("\u{2620}\u{FE0F}")
+                            .font(.system(size: 28))
+                            .opacity(pulse)
+                        Text(L10n.davyJonersLocker)
+                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .tracking(3)
+                        Text(L10n.commitToResurrect)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .tracking(1)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .foregroundColor(.white)
+                    .shadow(color: .black, radius: 6, y: 2)
+                }
+
                 if navigatorEnabled {
+                    if showSpeechBubble && waterLevel < 100 { speechBubbleOverlay }
                     navigatorOverlay
                 }
             }
         }
         .frame(height: 200)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .onReceive(Timer.publish(every: 8, on: .main, in: .common).autoconnect()) { _ in
+            withAnimation(.easeInOut(duration: 0.5)) {
+                speechIndex += 1
+            }
+        }
+    }
+
+    private var speechBubbleOverlay: some View {
+        let unpushed = max(0, todayCommits - todayPushes)
+        let speeches = L10n.captainSpeeches(dirty: totalDirtyFiles, unpushed: unpushed, waterLevel: waterLevel)
+        let text = speeches[speechIndex % speeches.count]
+
+        return GeometryReader { geo in
+            let cx = geo.size.width * 0.42
+            let waterY = geo.size.height * (1 - level * 0.93)
+            let sinkAmount = max(0, CGFloat(waterLevel) - 8) / 92.0 * 55
+            let shipY = waterY + sinkAmount
+            let bubbleY = max(shipY - 54, 16)
+
+            VStack(spacing: 0) {
+                Text(text)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.black.opacity(0.55))
+                    )
+                Path { path in
+                    path.move(to: CGPoint(x: 0, y: 0))
+                    path.addLine(to: CGPoint(x: 10, y: 0))
+                    path.addLine(to: CGPoint(x: 5, y: 6))
+                    path.closeSubpath()
+                }
+                .fill(Color.black.opacity(0.55))
+                .frame(width: 10, height: 6)
+            }
+            .position(x: cx, y: bubbleY)
+        }
+        .id(text)
+        .transition(.opacity)
+        .allowsHitTesting(false)
     }
 
     private var navigatorOverlay: some View {
         VStack {
             Spacer()
-            HStack(spacing: 12) {
-                if totalDirtyFiles == 0 && totalUnpushedCommits == 0 {
-                    Text("\u{1F3DD}\u{FE0F} \(L10n.allStashed)")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.green)
-                } else {
-                    if totalDirtyFiles > 0 {
-                        Text("\u{1F48E} \(totalDirtyFiles) \(L10n.dug)")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.orange)
-                    }
-                    if totalUnpushedCommits > 0 {
-                        Text("\u{1F4E6} \(totalUnpushedCommits) \(L10n.stowed)")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.cyan)
-                    }
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
-            .background(
-                LinearGradient(
-                    colors: [.black.opacity(0.45), .clear],
-                    startPoint: .bottom,
-                    endPoint: .top
+            PipelineView(dirtyFiles: totalDirtyFiles, todayCommits: todayCommits, todayPushes: todayPushes, compact: true)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background(
+                    LinearGradient(
+                        colors: [.black.opacity(0.45), .clear],
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
                 )
-            )
         }
-        .allowsHitTesting(false)
     }
 
     // MARK: - Scene Canvas
@@ -131,12 +264,14 @@ struct WaterAnimationView: View {
             drawClouds(ctx: &ctx, size: size, time: time)
             if waterLevel > 55 { drawStars(ctx: &ctx, size: size, time: time) }
             if waterLevel < 30 { drawSeagulls(ctx: &ctx, size: size, time: time) }
+            if waterLevel < 30 { drawFlyingFish(ctx: &ctx, size: size, time: time) }
 
             drawWave(ctx: &ctx, size: size, time: time,
                      speed: 0.12, amp: 4, freq: 1.3, levelMod: 0.86, colors: deepWaterColors)
             if level > 0.3 { drawCaustics(ctx: &ctx, size: size, time: time) }
 
             drawGalleon(ctx: &ctx, size: size, time: time)
+            if waterLevel > 35 { drawSpray(ctx: &ctx, size: size, time: time) }
 
             drawWave(ctx: &ctx, size: size, time: time,
                      speed: 0.2, amp: 5, freq: 2.0, levelMod: 0.95, colors: midWaterColors)
@@ -149,6 +284,8 @@ struct WaterAnimationView: View {
             if waterLevel > 55 { drawDebris(ctx: &ctx, size: size, time: time) }
             if waterLevel > 45 { drawBubbles(ctx: &ctx, size: size, time: time) }
             if waterLevel > 40 { drawRain(ctx: &ctx, size: size, time: time) }
+            if waterLevel > 55 { drawLightning(ctx: &ctx, size: size, time: time) }
+            if waterLevel > 85 { drawWhirlpool(ctx: &ctx, size: size, time: time) }
             if waterLevel > 82 { drawDrowningHand(ctx: &ctx, size: size, time: time) }
         }
     }
@@ -189,6 +326,16 @@ struct WaterAnimationView: View {
 
             // === PIRATE CAPTAIN ===
             drawCaptain(ctx: &lctx, cx: cx, sy: sy, time: time)
+
+            // === PARROT ===
+            if waterLevel < 50 {
+                drawParrot(ctx: &lctx, cx: cx, sy: sy, time: time)
+            }
+
+            // === LANTERN ===
+            if waterLevel > 50 && waterLevel < 75 {
+                drawLantern(ctx: &lctx, cx: cx, sy: sy, time: time)
+            }
         }
     }
 
@@ -985,6 +1132,310 @@ struct WaterAnimationView: View {
             ctx.fill(Path(ellipseIn: CGRect(x: x - CGFloat(r * 0.4), y: y - CGFloat(r * 0.6),
                                             width: CGFloat(r * 0.5), height: CGFloat(r * 0.4))),
                      with: .color(.white.opacity(fade * 0.5)))
+        }
+    }
+
+    // MARK: - Lightning Bolts
+
+    private func drawLightning(ctx: inout GraphicsContext, size: CGSize, time: Double) {
+        let intensity = min(1.0, (waterLevel - 55) / 45.0)
+        let boltCount = 1 + Int(intensity * 2)
+
+        for i in 0..<boltCount {
+            let seed = Double(i) * 137.5 + floor(time * (0.3 + intensity * 0.5)) * 73.1
+            let visible = hash(seed) < (0.15 + intensity * 0.25)
+            guard visible else { continue }
+
+            let startX = CGFloat(hash(seed + 1)) * size.width
+            let waterY = size.height * (1 - level * 0.9)
+            var x = startX
+            var y: CGFloat = 0
+
+            var bolt = Path()
+            bolt.move(to: CGPoint(x: x, y: y))
+
+            let segments = 6 + Int(hash(seed + 2) * 4)
+            let segH = waterY / CGFloat(segments)
+
+            for j in 0..<segments {
+                let jag = CGFloat(hash(seed + Double(j) * 3.7 + 10)) * 20 - 10
+                x += jag
+                y += segH
+                bolt.addLine(to: CGPoint(x: x, y: y))
+            }
+
+            // Glow
+            ctx.stroke(bolt, with: .color(Color(red: 0.7, green: 0.8, blue: 1.0).opacity(0.4)), lineWidth: 5)
+            // Main bolt
+            ctx.stroke(bolt, with: .color(.white.opacity(0.9)), lineWidth: 2)
+
+            // Branch from midpoint
+            if hash(seed + 20) > 0.4 {
+                let midSeg = segments / 2
+                var mx = startX
+                for j in 0..<midSeg {
+                    mx += CGFloat(hash(seed + Double(j) * 3.7 + 10)) * 20 - 10
+                }
+                let my = segH * CGFloat(midSeg)
+                var branch = Path()
+                branch.move(to: CGPoint(x: mx, y: my))
+                let dir: CGFloat = hash(seed + 40) > 0.5 ? 1 : -1
+                for k in 1...3 {
+                    let bx = mx + CGFloat(k) * 8 * dir
+                    let by = my + CGFloat(k) * segH * 0.7
+                    branch.addLine(to: CGPoint(x: bx, y: by))
+                }
+                ctx.stroke(branch, with: .color(.white.opacity(0.6)), lineWidth: 1)
+            }
+        }
+    }
+
+    // MARK: - Whirlpool
+
+    private func drawWhirlpool(ctx: inout GraphicsContext, size: CGSize, time: Double) {
+        let waterY = size.height * (1 - level * 0.95)
+        let wpX = size.width * 0.55
+        let wpY = waterY + 20
+        let intensity = min(1.0, (waterLevel - 85) / 15.0)
+        let rotation = time * 2.5
+
+        for i in 0..<5 {
+            let t = CGFloat(i) / 5.0
+            let radius = (8 + t * 25) * CGFloat(0.5 + intensity * 0.5)
+            let phase = rotation + Double(i) * 0.8
+
+            var ring = Path()
+            var first = true
+            for a in stride(from: 0.0, through: Double.pi * 2, by: 0.15) {
+                let r = radius * (1 - CGFloat(a / (Double.pi * 2)) * 0.3)
+                let px = wpX + cos(CGFloat(a + phase)) * r * 1.5
+                let py = wpY + sin(CGFloat(a + phase)) * r * 0.4
+                if first {
+                    ring.move(to: CGPoint(x: px, y: py))
+                    first = false
+                } else {
+                    ring.addLine(to: CGPoint(x: px, y: py))
+                }
+            }
+
+            let alpha = (1 - t) * 0.3 * Double(intensity)
+            ctx.stroke(ring, with: .color(Color(red: 0.3, green: 0.5, blue: 0.6).opacity(alpha)), lineWidth: 1.2)
+        }
+
+        // Dark center
+        let centerR: CGFloat = 4 * CGFloat(intensity)
+        ctx.fill(Path(ellipseIn: CGRect(x: wpX - centerR, y: wpY - centerR * 0.3,
+                                         width: centerR * 2, height: centerR * 0.6)),
+                 with: .color(Color(red: 0.02, green: 0.0, blue: 0.05).opacity(0.5 * Double(intensity))))
+    }
+
+    // MARK: - Flying Fish
+
+    private func drawFlyingFish(ctx: inout GraphicsContext, size: CGSize, time: Double) {
+        let waterY = size.height * (1 - level * 0.95)
+        let fish: [(seed: Double, speed: Double, jumpH: CGFloat)] = [
+            (0, 0.4, 25), (1, 0.55, 20), (2, 0.35, 18),
+        ]
+
+        for f in fish {
+            let cycleDuration = 4.0 + f.seed * 0.8
+            let phase = ((time * f.speed + f.seed * 3.7)
+                .truncatingRemainder(dividingBy: cycleDuration)) / cycleDuration
+
+            guard phase < 0.6 else { continue }
+            let t = phase / 0.6
+
+            let startX = CGFloat(hash(f.seed + 10)) * size.width * 0.6 + size.width * 0.1
+            let jumpWidth: CGFloat = 60 + CGFloat(hash(f.seed + 11)) * 30
+
+            let x = startX + CGFloat(t) * jumpWidth
+            let arcY = -4 * f.jumpH * CGFloat(t) * CGFloat(t - 1)
+            let y = waterY - arcY
+
+            let angle = atan2(-f.jumpH * CGFloat(2 * t - 1) * 4, jumpWidth * 0.6)
+
+            ctx.drawLayer { fctx in
+                fctx.concatenate(CGAffineTransform.identity
+                    .translatedBy(x: x, y: y)
+                    .rotated(by: angle)
+                    .translatedBy(x: -x, y: -y))
+
+                // Body
+                var body = Path()
+                body.addEllipse(in: CGRect(x: x - 5, y: y - 2, width: 10, height: 4))
+                fctx.fill(body, with: .color(Color(red: 0.6, green: 0.75, blue: 0.85).opacity(0.8)))
+
+                // Tail
+                var tail = Path()
+                tail.move(to: CGPoint(x: x - 5, y: y))
+                tail.addLine(to: CGPoint(x: x - 9, y: y - 3))
+                tail.addLine(to: CGPoint(x: x - 9, y: y + 3))
+                tail.closeSubpath()
+                fctx.fill(tail, with: .color(Color(red: 0.5, green: 0.65, blue: 0.78).opacity(0.7)))
+
+                // Wing fins
+                let wingFlap = CGFloat(sin(time * 12 + f.seed * 5)) * 2
+                var wing = Path()
+                wing.move(to: CGPoint(x: x - 1, y: y - 2))
+                wing.addLine(to: CGPoint(x: x + 3, y: y - 8 + wingFlap))
+                wing.addLine(to: CGPoint(x: x + 6, y: y - 2))
+                wing.closeSubpath()
+                fctx.fill(wing, with: .color(Color(red: 0.7, green: 0.82, blue: 0.9).opacity(0.5)))
+
+                // Eye
+                let eye = Path(ellipseIn: CGRect(x: x + 3, y: y - 1.5, width: 1.5, height: 1.5))
+                fctx.fill(eye, with: .color(.black.opacity(0.6)))
+            }
+
+            // Splash at entry/exit
+            if t < 0.1 || t > 0.85 {
+                for s in 0..<3 {
+                    let sx = (t < 0.1 ? startX : startX + jumpWidth) + CGFloat(s * 3 - 3)
+                    let sy = waterY - CGFloat(hash(f.seed + Double(s) + 20)) * 5
+                    let sr: CGFloat = 1 + CGFloat(hash(f.seed + Double(s) + 25))
+                    ctx.fill(Path(ellipseIn: CGRect(x: sx - sr, y: sy - sr, width: sr * 2, height: sr * 2)),
+                             with: .color(.white.opacity(0.3)))
+                }
+            }
+        }
+    }
+
+    // MARK: - Parrot
+
+    private func drawParrot(ctx: inout GraphicsContext, cx: CGFloat, sy: CGFloat, time: Double) {
+        guard waterLevel < 75 else { return }
+        let pirateX = cx - 14
+        let baseY = sy - 2
+        let shoulderX = pirateX + 5
+        let shoulderY = baseY - 15
+
+        let bob = CGFloat(sin(time * 3)) * 0.8
+        let px = shoulderX
+        let py = shoulderY + bob
+
+        // Body (green)
+        var body = Path()
+        body.addEllipse(in: CGRect(x: px - 2.5, y: py - 2, width: 5, height: 5))
+        ctx.fill(body, with: .color(Color(red: 0.15, green: 0.65, blue: 0.20).opacity(0.9)))
+
+        // Head
+        let head = Path(ellipseIn: CGRect(x: px - 1.5, y: py - 4.5, width: 4, height: 3.5))
+        ctx.fill(head, with: .color(Color(red: 0.18, green: 0.72, blue: 0.25).opacity(0.9)))
+
+        // Beak
+        var beak = Path()
+        beak.move(to: CGPoint(x: px + 2, y: py - 3))
+        beak.addLine(to: CGPoint(x: px + 5, y: py - 2.5))
+        beak.addLine(to: CGPoint(x: px + 2, y: py - 2))
+        beak.closeSubpath()
+        ctx.fill(beak, with: .color(Color(red: 0.95, green: 0.75, blue: 0.1)))
+
+        // Eye
+        let eye = Path(ellipseIn: CGRect(x: px + 0.5, y: py - 4, width: 1.2, height: 1.2))
+        ctx.fill(eye, with: .color(.black.opacity(0.8)))
+
+        // Wing flapping
+        let wingUp = sin(time * 4) > 0.2
+        var wing = Path()
+        if wingUp {
+            wing.move(to: CGPoint(x: px - 2, y: py))
+            wing.addLine(to: CGPoint(x: px - 6, y: py - 4))
+            wing.addLine(to: CGPoint(x: px - 1, y: py - 1))
+        } else {
+            wing.move(to: CGPoint(x: px - 2, y: py))
+            wing.addLine(to: CGPoint(x: px - 5, y: py + 1))
+            wing.addLine(to: CGPoint(x: px - 1, y: py + 1))
+        }
+        wing.closeSubpath()
+        ctx.fill(wing, with: .color(Color(red: 0.85, green: 0.15, blue: 0.10).opacity(0.85)))
+
+        // Tail feathers
+        var tail = Path()
+        tail.move(to: CGPoint(x: px - 1, y: py + 3))
+        tail.addLine(to: CGPoint(x: px - 3, y: py + 7))
+        tail.addLine(to: CGPoint(x: px + 1, y: py + 6))
+        tail.addLine(to: CGPoint(x: px + 1, y: py + 3))
+        tail.closeSubpath()
+        ctx.fill(tail, with: .color(Color(red: 0.85, green: 0.15, blue: 0.10).opacity(0.7)))
+    }
+
+    // MARK: - Lantern Glow
+
+    private func drawLantern(ctx: inout GraphicsContext, cx: CGFloat, sy: CGFloat, time: Double) {
+        let hw: CGFloat = 42
+        let sternRise: CGFloat = 8
+        let lanternX = cx - hw + 3
+        let lanternY = sy - sternRise - 3
+
+        let flicker = 0.6 + sin(time * 8) * 0.15 + sin(time * 13) * 0.1 + sin(time * 21) * 0.05
+
+        // Outer glow
+        let glowR: CGFloat = 14
+        ctx.fill(Path(ellipseIn: CGRect(x: lanternX - glowR, y: lanternY - glowR,
+                                         width: glowR * 2, height: glowR * 2)),
+                 with: .color(Color(red: 1.0, green: 0.6, blue: 0.15).opacity(0.08 * flicker)))
+
+        // Mid glow
+        let midR: CGFloat = 8
+        ctx.fill(Path(ellipseIn: CGRect(x: lanternX - midR, y: lanternY - midR,
+                                         width: midR * 2, height: midR * 2)),
+                 with: .color(Color(red: 1.0, green: 0.65, blue: 0.2).opacity(0.15 * flicker)))
+
+        // Lantern body
+        let lw: CGFloat = 3
+        let lh: CGFloat = 4
+        ctx.fill(Path(CGRect(x: lanternX - lw / 2, y: lanternY - lh / 2, width: lw, height: lh)),
+                 with: .color(Color(red: 0.3, green: 0.2, blue: 0.1)))
+
+        // Flame core
+        let flameH: CGFloat = 2.5 * CGFloat(flicker)
+        var flame = Path()
+        flame.move(to: CGPoint(x: lanternX - 1, y: lanternY + 0.5))
+        flame.addQuadCurve(
+            to: CGPoint(x: lanternX + 1, y: lanternY + 0.5),
+            control: CGPoint(x: lanternX + CGFloat(sin(time * 15)) * 0.5, y: lanternY - flameH))
+        flame.closeSubpath()
+        ctx.fill(flame, with: .color(Color(red: 1.0, green: 0.85, blue: 0.3).opacity(0.9 * flicker)))
+
+        // Lantern hook
+        var hook = Path()
+        hook.move(to: CGPoint(x: lanternX, y: lanternY - lh / 2))
+        hook.addLine(to: CGPoint(x: lanternX, y: lanternY - lh / 2 - 3))
+        ctx.stroke(hook, with: .color(Color(white: 0.3).opacity(0.6)), lineWidth: 0.5)
+    }
+
+    // MARK: - Wave Spray
+
+    private func drawSpray(ctx: inout GraphicsContext, size: CGSize, time: Double) {
+        let waterY = size.height * (1 - level * 0.93)
+        let bowX = size.width * 0.42 + 46
+        let intensity = min(1.0, (waterLevel - 35) / 45.0)
+        let count = 5 + Int(intensity * 12)
+
+        for i in 0..<count {
+            let seed = Double(i) * 7.3
+            let spraySpeed = 15 + hash(seed + 1) * 25
+            let cycle = 1.5 + hash(seed + 2) * 1.5
+            let phase = ((time * (0.5 + intensity * 0.5) + hash(seed + 3) * cycle)
+                .truncatingRemainder(dividingBy: cycle)) / cycle
+
+            guard phase < 0.8 else { continue }
+            let t = phase / 0.8
+
+            let angle = -Double.pi / 3 - hash(seed + 4) * Double.pi / 4
+            let speed = CGFloat(spraySpeed) * CGFloat(intensity)
+            let dx = cos(CGFloat(angle)) * speed * CGFloat(t)
+            let dy = sin(CGFloat(angle)) * speed * CGFloat(t) + CGFloat(t * t) * 20
+
+            let x = bowX + dx + CGFloat(sin(time * 3 + seed)) * 2
+            let y = waterY + dy
+
+            let r = (1 + hash(seed + 5) * 2) * (1 - t)
+            let alpha = (0.2 + intensity * 0.25) * (1 - t)
+
+            ctx.fill(Path(ellipseIn: CGRect(x: x - CGFloat(r), y: y - CGFloat(r),
+                                             width: CGFloat(r * 2), height: CGFloat(r * 2))),
+                     with: .color(.white.opacity(alpha)))
         }
     }
 

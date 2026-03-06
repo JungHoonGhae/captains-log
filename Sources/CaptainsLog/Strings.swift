@@ -224,6 +224,77 @@ enum L10n {
     static var dug: String { s("dug", "발굴", "発掘", "挖掘", "excavado", "excavé", "gegraben") }
     static var stowed: String { s("stowed", "적재", "積載", "装载", "estibado", "arrimé", "verstaut") }
     static var allStashed: String { s("All stashed!", "은닉 완료!", "全て隠した！", "全部藏好了！", "¡Todo escondido!", "Tout planqué !", "Alles versteckt!") }
+    static var stashed: String { s("stashed", "은닉", "格納", "藏匿", "escondido", "planqué", "versteckt") }
+
+    // MARK: Pipeline Tooltips
+    static var tooltipDug: String { s(
+        "Uncommitted changes across all repos",
+        "모든 저장소의 커밋되지 않은 변경사항",
+        "全リポジトリの未コミット変更",
+        "所有仓库的未提交更改",
+        "Cambios sin commit en todos los repos",
+        "Changements non commités dans tous les repos",
+        "Nicht committete Änderungen in allen Repos"
+    )}
+    static var tooltipStowed: String { s(
+        "Today's local commits across all repos",
+        "오늘 모든 저장소의 로컬 커밋 수",
+        "今日の全リポジトリのローカルコミット",
+        "今天所有仓库的本地提交",
+        "Commits locales de hoy en todos los repos",
+        "Commits locaux du jour dans tous les repos",
+        "Heutige lokale Commits in allen Repos"
+    )}
+    static var tooltipStashed: String { s(
+        "Today's commits pushed to remote",
+        "오늘 원격에 푸시된 커밋 수",
+        "今日リモートにプッシュ済みのコミット",
+        "今天已推送到远程的提交",
+        "Commits pusheados hoy al remoto",
+        "Commits poussés au distant aujourd'hui",
+        "Heute zum Remote gepushte Commits"
+    )}
+
+    // MARK: Captain Speech Bubbles
+    static func captainSpeeches(dirty: Int, unpushed: Int, waterLevel: Double) -> [String] {
+        if waterLevel > 70 { return speechStorm }
+        if waterLevel < 20 && dirty == 0 && unpushed == 0 { return speechCalm }
+        if dirty == 0 && unpushed == 0 { return speechClean }
+        if dirty > 0 && unpushed == 0 { return speechDirtyOnly }
+        if dirty == 0 && unpushed > 0 { return speechUnpushedOnly }
+        return speechBoth
+    }
+
+    private static var speechClean: [String] { [
+        s("Hoist the sails!", "순풍에 돛을 올려라!", "帆を上げろ！", "升帆前进！", "¡Izad velas!", "Hissez les voiles !", "Segel setzen!"),
+        s("The seas are ours!", "바다가 우리 편이다!", "海は我らのものだ！", "大海归我们！", "¡El mar es nuestro!", "La mer est à nous !", "Das Meer gehört uns!"),
+        s("Full speed ahead!", "전속 전진!", "全速前進！", "全速前进！", "¡A toda máquina!", "En avant toute !", "Volle Kraft voraus!")
+    ]}
+    private static var speechDirtyOnly: [String] { [
+        s("Commit those changes!", "변경사항을 커밋해라!", "変更をコミットしろ！", "提交变更！", "¡Commitea los cambios!", "Commite les changements !", "Committe die Änderungen!"),
+        s("Treasure found! Stow it!", "보물 발견! 적재해라!", "宝発見！積め！", "发现宝藏！装船！", "¡Tesoro! ¡Estibad!", "Trésor ! Arrime !", "Schatz gefunden! Verstauen!"),
+        s("Don't leave loot on deck!", "갑판에 전리품을 놔두지 마라!", "甲板に放置するな！", "别放在甲板上！", "¡No dejes botín en cubierta!", "Pas de butin sur le pont !", "Beute nicht an Deck lassen!")
+    ]}
+    private static var speechUnpushedOnly: [String] { [
+        s("Send cargo to port!", "화물을 항구로 보내라!", "貨物を港へ送れ！", "把货送到港口！", "¡Envía la carga!", "Envoie la cargaison !", "Fracht zum Hafen!"),
+        s("Push before the tide turns!", "밀물 전에 푸시해라!", "潮が変わる前にプッシュ！", "趁潮水未变快推！", "¡Push antes de la marea!", "Pousse avant la marée !", "Push vor der Flut!"),
+        s("Harbor's waiting!", "항구가 기다린다!", "港が待っている！", "港口在等着！", "¡El puerto espera!", "Le port attend !", "Der Hafen wartet!")
+    ]}
+    private static var speechBoth: [String] { [
+        s("Commit and push, double time!", "커밋하고 푸시! 서둘러!", "コミットしてプッシュ！急げ！", "提交并推送！快！", "¡Commit y push, rápido!", "Commit et push, vite !", "Commit und Push, schnell!"),
+        s("Stow and ship the loot!", "적재하고 출항해라!", "積んで出航だ！", "装船出港！", "¡Estiba y zarpa!", "Arrime et appareille !", "Verstauen und ablegen!"),
+        s("All hands on deck!", "전원 갑판으로!", "総員甲板へ！", "全员上甲板！", "¡Todos a cubierta!", "Tout l'équipage sur le pont !", "Alle Mann an Deck!")
+    ]}
+    private static var speechStorm: [String] { [
+        s("Batten down the hatches!", "해치를 닫아라!", "ハッチを閉めろ！", "关闭舱口！", "¡Cerrad escotillas!", "Fermez les écoutilles !", "Luken dicht!"),
+        s("Storm's upon us! Ship now!", "폭풍이다! 당장 출항!", "嵐だ！今すぐ出せ！", "暴风来了！快！", "¡Tormenta! ¡Ya!", "Tempête ! Vite !", "Sturm! Sofort shippen!"),
+        s("We're taking on water!", "침수 중이다!", "浸水している！", "正在进水！", "¡Nos hundimos!", "On prend l'eau !", "Wir laufen voll!")
+    ]}
+    private static var speechCalm: [String] { [
+        s("Smooth seas, Captain...", "순항이로다...", "穏やかな海だ…", "风平浪静…", "Mar en calma...", "Mer d'huile...", "Ruhige See..."),
+        s("A fine day to sail...", "항해하기 좋은 날이로다...", "航海日和だ…", "好天气啊…", "Buen día para navegar...", "Belle journée en mer...", "Guter Segeltag..."),
+        s("The horizon is clear...", "수평선이 맑다...", "水平線が澄んでいる…", "地平线清晰…", "Horizonte despejado...", "L'horizon est dégagé...", "Horizont ist klar...")
+    ]}
 
     // MARK: Off Duty (비운항 시간)
     static var sleepMode: String { s("Off Duty", "비운항 시간", "停泊時間", "停泊时间", "Fuera de Servicio", "Hors Service", "Dienstfrei") }
@@ -464,6 +535,9 @@ enum L10n {
     static var todayVoyage: String { s("Today's Voyage", "오늘 항해", "今日の航海", "今日航行", "Viaje de Hoy", "Voyage du Jour", "Heutige Fahrt") }
     static var flagship: String { s("Flagship!", "기함 달성!", "旗艦達成！", "旗舰达成！", "¡Insignia!", "Amiral !", "Flaggschiff!") }
     static var treasure: String { s("Treasure", "보물", "宝物", "宝藏", "Tesoro", "Trésor", "Schatz") }
+    static var speechBubble: String { s("Speech Bubble", "말풍선", "吹き出し", "对话框", "Bocadillo", "Bulle", "Sprechblase") }
+    static var dailyGoal: String { s("Daily Goal", "일일 목표", "日課目標", "每日目标", "Meta Diaria", "Objectif Quotidien", "Tagesziel") }
+    static var commits: String { s("commits", "커밋", "コミット", "提交", "commits", "commits", "Commits") }
 
     // MARK: Death Screen
     static var davyJonersLocker: String { s(
