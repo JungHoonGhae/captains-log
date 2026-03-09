@@ -43,10 +43,67 @@ jobs:
           files: captains-log-macos.tar.gz
           generate_release_notes: true
 
-      - name: Update Homebrew formula
+      - name: Install Doppler CLI
+        uses: dopplerhq/cli-action@v3
+
+      - name: Fetch Homebrew token
+        id: doppler
+        run: |
+          set -euo pipefail
+          TOKEN=$(doppler secrets get HOMEBREW_TAP_TOKEN --plain 2>/dev/null)
+          if [ -z "$TOKEN" ]; then
+            echo "::error::HOMEBREW_TAP_TOKEN not found in Doppler"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "HOMEBREW_TAP_TOKEN=$TOKEN" >> "$GITHUB_OUTPUT"
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+
+      - name: Update Homebrew tap
         env:
           TAG: ${{ github.ref_name }}
           SHA256: ${{ steps.sha.outputs.sha256 }}
+          REPO: ${{ github.repository }}
+          TAP_TOKEN: ${{ steps.doppler.outputs.HOMEBREW_TAP_TOKEN }}
         run: |
-          echo "::notice::Homebrew SHA256: $SHA256"
-          echo "::notice::Update homebrew-captains-log formula with tag=$TAG sha256=$SHA256"
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/JungHoonGhae/homebrew-captains-log.git" /tmp/homebrew-tap
+          cd /tmp/homebrew-tap
+          cat > Formula/captains-log.rb <<FORMULA
+          class CaptainsLog < Formula
+            desc "Pirate-themed macOS menu bar app that gamifies dev velocity"
+            homepage "https://github.com/${REPO}"
+            url "https://github.com/${REPO}/releases/download/${TAG}/captains-log-macos.tar.gz"
+            sha256 "${SHA256}"
+            license "MIT"
+
+            depends_on :macos
+
+            def install
+              bin.install "CaptainsLog"
+            end
+
+            def caveats
+              <<~EOS
+                Captain's Log is a menu bar app.
+                Launch it from the terminal:
+                  CaptainsLog
+
+                Or add it to Login Items for auto-start.
+              EOS
+            end
+
+            test do
+              assert_predicate bin/"CaptainsLog", :exist?
+            end
+          end
+          FORMULA
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/captains-log.rb
+          if git diff --cached --quiet; then
+            echo "No formula changes."
+            exit 0
+          fi
+          git commit -m "chore: update captains-log ${TAG}"
+          git push
