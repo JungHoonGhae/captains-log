@@ -721,7 +721,7 @@ class GitTracker: ObservableObject {
 
     // MARK: - Water Level
 
-    private func calculateWaterLevel(lastActivity: Date?) -> Double {
+    func calculateWaterLevel(lastActivity: Date?) -> Double {
         guard let last = lastActivity else { return 100 }
         let hours = adjustedInactiveHours(since: last)
         switch hours {
